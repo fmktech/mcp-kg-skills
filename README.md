@@ -593,6 +593,119 @@ Environment variables matching these patterns are automatically detected as secr
 3. **Execution Output**: Secret values are replaced with `<REDACTED>`
 4. **File Permissions**: `.env` files are created with `0600` permissions
 
+## Testing
+
+### Quick Start
+
+```bash
+# Setup development environment
+./dev.sh setup
+
+# Start test services
+./dev.sh start
+
+# Run all tests
+./dev.sh test
+
+# Run with coverage
+./dev.sh test-cov
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py          # Shared fixtures
+├── unit/                # Unit tests (no external dependencies)
+│   ├── test_security.py
+│   ├── test_dependency_parser.py
+│   └── test_models.py
+└── integration/         # Integration tests (require Neo4j)
+    ├── test_database.py
+    └── test_end_to_end.py
+```
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# Unit tests only
+pytest tests/unit/
+
+# Integration tests only (requires Neo4j)
+export NEO4J_URI="bolt://localhost:7688"
+export NEO4J_PASSWORD="testpassword"
+pytest tests/integration/
+
+# Specific test file
+pytest tests/unit/test_security.py -v
+
+# Specific test
+pytest tests/unit/test_security.py::TestSecretDetector::test_default_patterns -v
+
+# With coverage
+pytest --cov=mcp_kg_skills --cov-report=html
+```
+
+### Using the dev.sh Script
+
+```bash
+# Run all tests
+./dev.sh test
+
+# Run specific tests
+./dev.sh test tests/unit/
+
+# Run with coverage report
+./dev.sh test-cov
+
+# Format code before committing
+./dev.sh format
+
+# Run linter
+./dev.sh lint
+
+# Type check
+./dev.sh typecheck
+```
+
+### Using Make
+
+```bash
+# Run tests
+make test
+
+# Unit tests only
+make test-unit
+
+# Integration tests only
+make test-integration
+
+# With coverage
+make test-cov
+
+# Code quality checks
+make lint format typecheck
+```
+
+### Writing Tests
+
+Use pytest fixtures:
+
+```python
+import pytest
+
+@pytest.mark.asyncio
+async def test_create_node(clean_db, sample_skill_data):
+    """Test creating a node."""
+    node = await clean_db.create_node("SKILL", sample_skill_data)
+    assert node["id"] is not None
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed testing guidelines.
+
 ## Development
 
 ### Project Structure

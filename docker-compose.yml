@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Neo4j for development and testing
+  neo4j:
+    image: neo4j:5.25.1
+    container_name: mcp-kg-skills-neo4j
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/testpassword
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_dbms_memory_pagecache_size=512M
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p testpassword 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Neo4j for integration tests (separate instance)
+  neo4j-test:
+    image: neo4j:5.25.1
+    container_name: mcp-kg-skills-neo4j-test
+    ports:
+      - "7475:7474"
+      - "7688:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/testpassword
+      - NEO4J_dbms_memory_heap_max__size=512M
+    tmpfs:
+      - /data
+      - /logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p testpassword 'RETURN 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
