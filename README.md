@@ -620,24 +620,43 @@ tests/
 │   ├── test_security.py
 │   ├── test_dependency_parser.py
 │   └── test_models.py
-└── integration/         # Integration tests (require Neo4j)
+└── integration/         # Integration tests (SQLite by default, Neo4j optional)
     ├── test_database.py
     └── test_end_to_end.py
+```
+
+### Database Backends for Testing
+
+Integration tests support two database backends:
+
+- **SQLite (default)**: Fast in-memory testing, no setup required
+- **Neo4j (optional)**: Full graph database testing with Cypher queries
+
+```bash
+# Run integration tests with SQLite (default - fast, no setup)
+pytest tests/integration/
+
+# Run integration tests with Neo4j
+export TEST_DB=neo4j
+export NEO4J_URI="bolt://localhost:7688"
+export NEO4J_PASSWORD="testpassword"
+pytest tests/integration/
 ```
 
 ### Running Tests
 
 ```bash
-# All tests
+# All tests (unit + integration with SQLite)
 pytest
 
 # Unit tests only
 pytest tests/unit/
 
-# Integration tests only (requires Neo4j)
-export NEO4J_URI="bolt://localhost:7688"
-export NEO4J_PASSWORD="testpassword"
+# Integration tests with SQLite (default)
 pytest tests/integration/
+
+# Integration tests with Neo4j
+TEST_DB=neo4j NEO4J_URI=bolt://localhost:7688 NEO4J_PASSWORD=testpassword pytest tests/integration/
 
 # Specific test file
 pytest tests/unit/test_security.py -v

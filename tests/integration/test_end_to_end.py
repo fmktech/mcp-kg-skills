@@ -1,8 +1,10 @@
 """End-to-end integration tests for complete workflows."""
 
+import os
+
 import pytest
 
-from mcp_kg_skills.database.neo4j import Neo4jDatabase
+from mcp_kg_skills.database.abstract import DatabaseInterface
 from mcp_kg_skills.execution.runner import ScriptRunner
 from mcp_kg_skills.security.secrets import SecretDetector
 from mcp_kg_skills.tools.env import EnvTool
@@ -11,13 +13,16 @@ from mcp_kg_skills.tools.nodes import NodesTool
 from mcp_kg_skills.tools.relationships import RelationshipsTool
 from mcp_kg_skills.utils.env_file import EnvFileManager
 
+# Check if we're using Neo4j or SQLite
+IS_NEO4J = os.getenv("TEST_DB") == "neo4j"
+
 
 @pytest.mark.asyncio
 class TestEndToEndWorkflow:
     """Test complete end-to-end workflows."""
 
     async def test_simple_script_execution(
-        self, clean_db: Neo4jDatabase, script_runner: ScriptRunner
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):
         """Test creating and executing a simple script."""
         # Create a simple script
@@ -50,7 +55,7 @@ def greet(name: str) -> str:
         assert result["return_code"] == 0
 
     async def test_multi_script_composition(
-        self, clean_db: Neo4jDatabase, script_runner: ScriptRunner
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):
         """Test composing and executing multiple scripts."""
         # Create first script
@@ -99,7 +104,7 @@ print(f"Result: {result}")
 
     async def test_skill_with_scripts_and_env(
         self,
-        clean_db: Neo4jDatabase,
+        clean_db: DatabaseInterface,
         env_manager: EnvFileManager,
         secret_detector: SecretDetector,
         script_runner: ScriptRunner,
@@ -185,7 +190,7 @@ def greet_user(name: str) -> str:
         assert "my-secret" not in result["stdout"]
 
     async def test_dependency_merging(
-        self, clean_db: Neo4jDatabase, script_runner: ScriptRunner
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):
         """Test that dependencies from multiple scripts are merged."""
         # Create scripts with different dependencies
@@ -228,9 +233,10 @@ def func_b() -> str:
         assert result["success"] is True
         assert "AB" in result["stdout"]
 
+    @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
     async def test_query_graph_structure(
         self,
-        clean_db: Neo4jDatabase,
+        clean_db: DatabaseInterface,
         env_manager: EnvFileManager,
         secret_detector: SecretDetector,
     ):
@@ -302,7 +308,7 @@ def func_b() -> str:
 
     async def test_secret_sanitization_throughout_flow(
         self,
-        clean_db: Neo4jDatabase,
+        clean_db: DatabaseInterface,
         env_manager: EnvFileManager,
         secret_detector: SecretDetector,
         script_runner: ScriptRunner,
@@ -375,7 +381,7 @@ def use_env():
         assert "<REDACTED>" in result["stdout"]
 
     async def test_error_handling_in_execution(
-        self, clean_db: Neo4jDatabase, script_runner: ScriptRunner
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):
         """Test error handling during script execution."""
         # Create script with error
@@ -406,7 +412,7 @@ def raise_error():
         assert "ValueError" in result["stderr"] or "ValueError" in result["stdout"]
 
     async def test_timeout_handling(
-        self, clean_db: Neo4jDatabase, script_runner: ScriptRunner
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):
         """Test that script execution respects timeout."""
         script_data = {
@@ -444,7 +450,7 @@ class TestComplexWorkflows:
 
     async def test_data_pipeline_workflow(
         self,
-        clean_db: Neo4jDatabase,
+        clean_db: DatabaseInterface,
         env_manager: EnvFileManager,
         secret_detector: SecretDetector,
         script_runner: ScriptRunner,

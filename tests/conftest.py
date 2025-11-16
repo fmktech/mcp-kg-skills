@@ -7,13 +7,21 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
-from neo4j import AsyncGraphDatabase
 
 from mcp_kg_skills.config import AppConfig, DatabaseConfig, ExecutionConfig
-from mcp_kg_skills.database.neo4j import Neo4jDatabase
+from mcp_kg_skills.database.abstract import DatabaseInterface
+from mcp_kg_skills.database.sqlite import SQLiteDatabase
 from mcp_kg_skills.execution.runner import ScriptRunner
 from mcp_kg_skills.security.secrets import SecretDetector
 from mcp_kg_skills.utils.env_file import EnvFileManager
+
+# Try to import Neo4j, but make it optional
+try:
+    from neo4j import AsyncGraphDatabase
+    from mcp_kg_skills.database.neo4j import Neo4jDatabase
+    HAS_NEO4J = True
+except ImportError:
+    HAS_NEO4J = False
 
 
 @pytest.fixture(scope="session")
@@ -42,39 +50,65 @@ def test_config() -> AppConfig:
 
 
 @pytest_asyncio.fixture
-async def db(test_config: AppConfig) -> AsyncGenerator[Neo4jDatabase, None]:
-    """Create and initialize test database connection."""
-    database = Neo4jDatabase(
-        uri=test_config.database.uri,
-        username=test_config.database.username,
-        password=test_config.database.password,
-        database=test_config.database.database,
-    )
+async def db(test_config: AppConfig, request) -> AsyncGenerator[DatabaseInterface, None]:
+    """Create and initialize test database connection.
 
-    await database.connect()
-    await database.initialize_schema()
+    Uses SQLite by default for fast testing.
+    Set TEST_DB=neo4j environment variable to use Neo4j instead.
+    """
+    db_type = os.getenv("TEST_DB", "sqlite")
 
-    yield database
+    if db_type == "neo4j":
+        if not HAS_NEO4J:
+            pytest.skip("Neo4j dependencies not available")
 
-    # Cleanup: Delete all nodes and relationships
-    async with database.driver.session(database=database.database) as session:
-        await session.run("MATCH (n) DETACH DELETE n")
+        database = Neo4jDatabase(
+            uri=test_config.database.uri,
+            username=test_config.database.username,
+            password=test_config.database.password,
+            database=test_config.database.database,
+        )
 
-    await database.disconnect()
+        await database.connect()
+        await database.initialize_schema()
+
+        yield database
+
+        # Cleanup: Delete all nodes and relationships
+        async with database.driver.session(database=database.database) as session:
+            await session.run("MATCH (n) DETACH DELETE n")
+
+        await database.disconnect()
+
+    else:  # sqlite (default)
+        database = SQLiteDatabase(":memory:")
+        await database.connect()
+        await database.initialize_schema()
+
+        yield database
+
+        await database.disconnect()
 
 
 @pytest_asyncio.fixture
-async def clean_db(db: Neo4jDatabase) -> AsyncGenerator[Neo4jDatabase, None]:
+async def clean_db(db: DatabaseInterface) -> AsyncGenerator[DatabaseInterface, None]:
     """Provide a clean database for each test."""
-    # Clean before test
-    async with db.driver.session(database=db.database) as session:
-        await session.run("MATCH (n) DETACH DELETE n")
+    # For SQLite in-memory, it's already clean
+    # For Neo4j, clean before test
+    if isinstance(db, SQLiteDatabase):
+        # SQLite in-memory is already clean, just initialize schema
+        pass
+    elif HAS_NEO4J and hasattr(db, 'driver'):
+        # Neo4j cleanup
+        async with db.driver.session(database=db.database) as session:
+            await session.run("MATCH (n) DETACH DELETE n")
 
     yield db
 
     # Clean after test
-    async with db.driver.session(database=db.database) as session:
-        await session.run("MATCH (n) DETACH DELETE n")
+    if HAS_NEO4J and hasattr(db, 'driver'):
+        async with db.driver.session(database=db.database) as session:
+            await session.run("MATCH (n) DETACH DELETE n")
 
 
 @pytest.fixture
@@ -101,7 +135,7 @@ def secret_detector() -> SecretDetector:
 
 @pytest_asyncio.fixture
 async def script_runner(
-    clean_db: Neo4jDatabase, temp_dir: Path, secret_detector: SecretDetector
+    clean_db: DatabaseInterface, temp_dir: Path, secret_detector: SecretDetector
 ) -> ScriptRunner:
     """Create script runner for tests."""
     cache_dir = temp_dir / "cache"

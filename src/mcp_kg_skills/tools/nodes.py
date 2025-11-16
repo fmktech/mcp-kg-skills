@@ -124,7 +124,8 @@ class NodesTool:
                 raise ValidationError(f"Unknown node type: {node_type}")
 
             # Convert to dict and create in database
-            node_data = node_model.model_dump()
+            # Use mode="json" to serialize datetime objects to ISO format strings
+            node_data = node_model.model_dump(mode="json")
             created_node = await self.db.create_node(node_type.value, node_data)
 
             logger.info(f"Created {node_type.value} node: {created_node['id']}")
@@ -162,7 +163,7 @@ class NodesTool:
         }
 
         env_model = EnvNode(**env_data)
-        node_data = env_model.model_dump()
+        node_data = env_model.model_dump(mode="json")
         created_node = await self.db.create_node("ENV", node_data)
 
         # Create .env file with ALL variables (public + secret)

@@ -1,20 +1,26 @@
-"""Integration tests for Neo4j database layer."""
+"""Integration tests for database layer (Neo4j and SQLite)."""
+
+import os
 
 import pytest
 
-from mcp_kg_skills.database.neo4j import Neo4jDatabase
+from mcp_kg_skills.database.abstract import DatabaseInterface
 from mcp_kg_skills.exceptions import (
     CircularDependencyError,
+    InvalidQueryError,
     NodeAlreadyExistsError,
     NodeNotFoundError,
 )
+
+# Check if we're using Neo4j or SQLite
+IS_NEO4J = os.getenv("TEST_DB") == "neo4j"
 
 
 @pytest.mark.asyncio
 class TestDatabaseBasicOperations:
     """Test basic database CRUD operations."""
 
-    async def test_create_node(self, clean_db: Neo4jDatabase, sample_skill_data):
+    async def test_create_node(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test creating a node."""
         node = await clean_db.create_node("SKILL", sample_skill_data)
 
@@ -25,7 +31,7 @@ class TestDatabaseBasicOperations:
         assert node["updated_at"] is not None
 
     async def test_create_duplicate_node_raises_error(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test that creating duplicate node raises error."""
         await clean_db.create_node("SKILL", sample_skill_data)
@@ -33,7 +39,7 @@ class TestDatabaseBasicOperations:
         with pytest.raises(NodeAlreadyExistsError):
             await clean_db.create_node("SKILL", sample_skill_data)
 
-    async def test_read_node(self, clean_db: Neo4jDatabase, sample_skill_data):
+    async def test_read_node(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test reading a node by ID."""
         created = await clean_db.create_node("SKILL", sample_skill_data)
         node_id = created["id"]
@@ -44,12 +50,12 @@ class TestDatabaseBasicOperations:
         assert node["id"] == node_id
         assert node["name"] == sample_skill_data["name"]
 
-    async def test_read_nonexistent_node(self, clean_db: Neo4jDatabase):
+    async def test_read_nonexistent_node(self, clean_db: DatabaseInterface):
         """Test reading a node that doesn't exist."""
         node = await clean_db.read_node("nonexistent-id")
         assert node is None
 
-    async def test_read_node_by_name(self, clean_db: Neo4jDatabase, sample_skill_data):
+    async def test_read_node_by_name(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test reading a node by type and name."""
         await clean_db.create_node("SKILL", sample_skill_data)
 
@@ -58,7 +64,7 @@ class TestDatabaseBasicOperations:
         assert node is not None
         assert node["name"] == sample_skill_data["name"]
 
-    async def test_update_node(self, clean_db: Neo4jDatabase, sample_skill_data):
+    async def test_update_node(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test updating a node."""
         created = await clean_db.create_node("SKILL", sample_skill_data)
         node_id = created["id"]
@@ -70,12 +76,12 @@ class TestDatabaseBasicOperations:
         assert updated["description"] == "Updated description"
         assert updated["name"] == sample_skill_data["name"]
 
-    async def test_update_nonexistent_node(self, clean_db: Neo4jDatabase):
+    async def test_update_nonexistent_node(self, clean_db: DatabaseInterface):
         """Test updating a node that doesn't exist."""
         with pytest.raises(NodeNotFoundError):
             await clean_db.update_node("nonexistent-id", {"description": "test"})
 
-    async def test_delete_node(self, clean_db: Neo4jDatabase, sample_skill_data):
+    async def test_delete_node(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test deleting a node."""
         created = await clean_db.create_node("SKILL", sample_skill_data)
         node_id = created["id"]
@@ -87,13 +93,13 @@ class TestDatabaseBasicOperations:
         node = await clean_db.read_node(node_id)
         assert node is None
 
-    async def test_delete_nonexistent_node(self, clean_db: Neo4jDatabase):
+    async def test_delete_nonexistent_node(self, clean_db: DatabaseInterface):
         """Test deleting a node that doesn't exist."""
         deleted = await clean_db.delete_node("nonexistent-id")
         assert deleted is False
 
     async def test_list_nodes(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_knowledge_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_knowledge_data
     ):
         """Test listing nodes."""
         # Create multiple nodes
@@ -110,7 +116,7 @@ class TestDatabaseBasicOperations:
         assert len(skills) == 2
         assert all(s["name"] in ["test-skill", "another-skill"] for s in skills)
 
-    async def test_list_nodes_with_filters(self, clean_db: Neo4jDatabase):
+    async def test_list_nodes_with_filters(self, clean_db: DatabaseInterface):
         """Test listing nodes with name filter."""
         # Create nodes with different names
         await clean_db.create_node(
@@ -132,7 +138,7 @@ class TestDatabaseBasicOperations:
         assert len(nodes) == 2
         assert all("data" in node["name"] for node in nodes)
 
-    async def test_list_nodes_pagination(self, clean_db: Neo4jDatabase):
+    async def test_list_nodes_pagination(self, clean_db: DatabaseInterface):
         """Test listing nodes with pagination."""
         # Create multiple nodes
         for i in range(5):
@@ -160,7 +166,7 @@ class TestRelationships:
     """Test relationship operations."""
 
     async def test_create_relationship(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_script_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_script_data
     ):
         """Test creating a relationship."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -175,7 +181,7 @@ class TestRelationships:
         assert rel["target_id"] == script["id"]
 
     async def test_create_relationship_nonexistent_source(
-        self, clean_db: Neo4jDatabase, sample_script_data
+        self, clean_db: DatabaseInterface, sample_script_data
     ):
         """Test creating relationship with nonexistent source."""
         script = await clean_db.create_node("SCRIPT", sample_script_data)
@@ -186,7 +192,7 @@ class TestRelationships:
             )
 
     async def test_create_relationship_nonexistent_target(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test creating relationship with nonexistent target."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -197,7 +203,7 @@ class TestRelationships:
             )
 
     async def test_circular_dependency_detection(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test circular dependency detection for CONTAINS relationships."""
         # Create chain: skill1 -> skill2 -> skill3
@@ -219,7 +225,7 @@ class TestRelationships:
             await clean_db.create_relationship("CONTAINS", skill3["id"], skill1["id"])
 
     async def test_relate_to_allows_cycles(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test that RELATE_TO relationships can form cycles."""
         skill1 = await clean_db.create_node(
@@ -241,7 +247,7 @@ class TestRelationships:
         assert rel2 is not None
 
     async def test_list_relationships(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_script_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_script_data
     ):
         """Test listing relationships."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -262,7 +268,7 @@ class TestRelationships:
         assert all(r["source_id"] == skill["id"] for r in rels)
 
     async def test_delete_relationship(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_script_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_script_data
     ):
         """Test deleting a relationship."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -280,7 +286,7 @@ class TestRelationships:
         assert len(rels) == 0
 
     async def test_delete_relationships_by_criteria(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_script_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_script_data
     ):
         """Test deleting relationships by source/target."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -295,7 +301,7 @@ class TestRelationships:
         assert count == 1
 
     async def test_get_connected_nodes(
-        self, clean_db: Neo4jDatabase, sample_skill_data, sample_script_data
+        self, clean_db: DatabaseInterface, sample_skill_data, sample_script_data
     ):
         """Test getting nodes connected via relationships."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
@@ -322,8 +328,9 @@ class TestRelationships:
 class TestQueryExecution:
     """Test Cypher query execution."""
 
+    @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
     async def test_execute_simple_query(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test executing a simple read-only query."""
         await clean_db.create_node("SKILL", sample_skill_data)
@@ -339,8 +346,9 @@ class TestQueryExecution:
         assert results[0]["name"] == "another-skill"
         assert results[1]["name"] == "test-skill"
 
+    @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
     async def test_execute_query_with_parameters(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test query with parameters."""
         await clean_db.create_node("SKILL", sample_skill_data)
@@ -353,8 +361,9 @@ class TestQueryExecution:
         assert len(results) == 1
         assert results[0]["desc"] == sample_skill_data["description"]
 
+    @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
     async def test_execute_query_limit(
-        self, clean_db: Neo4jDatabase, sample_skill_data
+        self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test query result limiting."""
         # Create 5 nodes
@@ -369,7 +378,7 @@ class TestQueryExecution:
 
         assert len(results) == 3
 
-    async def test_readonly_query_validation(self, clean_db: Neo4jDatabase):
+    async def test_readonly_query_validation(self, clean_db: DatabaseInterface):
         """Test that write queries are rejected."""
         from mcp_kg_skills.exceptions import InvalidQueryError
 
@@ -387,17 +396,21 @@ class TestQueryExecution:
 class TestDatabaseSchemaInitialization:
     """Test database schema initialization."""
 
-    async def test_initialize_schema(self, clean_db: Neo4jDatabase):
+    @pytest.mark.skipif(not IS_NEO4J, reason="Neo4j-specific constraint checking")
+    async def test_initialize_schema(self, clean_db: DatabaseInterface):
         """Test that schema initialization creates constraints."""
         # Schema is initialized in fixture, verify it worked
-        async with clean_db.driver.session(database=clean_db.database) as session:
-            result = await session.run("SHOW CONSTRAINTS")
-            constraints = await result.values()
+        # This test only runs on Neo4j
+        from mcp_kg_skills.database.neo4j import Neo4jDatabase
+        if isinstance(clean_db, Neo4jDatabase):
+            async with clean_db.driver.session(database=clean_db.database) as session:
+                result = await session.run("SHOW CONSTRAINTS")
+                constraints = await result.values()
 
-            # Should have constraints for SKILL, SCRIPT, ENV names
-            assert len(constraints) >= 3
+                # Should have constraints for SKILL, SCRIPT, ENV names
+                assert len(constraints) >= 3
 
-    async def test_health_check(self, clean_db: Neo4jDatabase):
+    async def test_health_check(self, clean_db: DatabaseInterface):
         """Test database health check."""
         is_healthy = await clean_db.health_check()
         assert is_healthy is True
