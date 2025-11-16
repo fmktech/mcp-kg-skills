@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 # Create FastMCP instance
 mcp = FastMCP("mcp-kg-skills")
 
-# Global state
+# Global state - initialized lazily
+_initialized = False
 _config: AppConfig | None = None
 _db: DatabaseInterface | None = None
 _nodes_tool: NodesTool | None = None
@@ -33,13 +34,12 @@ _execute_tool: ExecuteTool | None = None
 _query_tool: QueryTool | None = None
 
 
-@mcp.on_startup
-async def initialize() -> None:
-    """Initialize the MCP server.
+async def _ensure_initialized() -> None:
+    """Lazy initialization of server components."""
+    global _initialized, _config, _db, _nodes_tool, _relationships_tool, _env_tool, _execute_tool, _query_tool
 
-    Loads configuration, connects to database, and initializes tools.
-    """
-    global _config, _db, _nodes_tool, _relationships_tool, _env_tool, _execute_tool, _query_tool
+    if _initialized:
+        return
 
     try:
         # Load configuration
@@ -52,7 +52,7 @@ async def initialize() -> None:
         # Ensure directories exist
         _config.ensure_directories()
 
-        logger.info("MCP Knowledge Graph Skills server starting...")
+        logger.info("MCP Knowledge Graph Skills server initializing...")
 
         # Initialize database
         _db = Neo4jDatabase(
@@ -87,28 +87,12 @@ async def initialize() -> None:
         _execute_tool = ExecuteTool(script_runner)
         _query_tool = QueryTool(_db, secret_detector)
 
+        _initialized = True
         logger.info("MCP Knowledge Graph Skills server initialized successfully")
 
     except Exception as e:
         logger.error(f"Failed to initialize server: {e}")
         raise
-
-
-@mcp.on_shutdown
-async def cleanup() -> None:
-    """Cleanup resources on server shutdown."""
-    global _db
-
-    try:
-        logger.info("Shutting down MCP Knowledge Graph Skills server...")
-
-        if _db:
-            await _db.disconnect()
-
-        logger.info("Server shutdown complete")
-
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
 
 
 @mcp.tool()
@@ -156,6 +140,8 @@ async def nodes(
         )
         ```
     """
+    await _ensure_initialized()
+
     if not _nodes_tool:
         raise MCPKGSkillsError("Server not initialized")
 
@@ -222,6 +208,8 @@ async def relationships(
         )
         ```
     """
+    await _ensure_initialized()
+
     if not _relationships_tool:
         raise MCPKGSkillsError("Server not initialized")
 
@@ -292,6 +280,8 @@ async def env(
         )
         ```
     """
+    await _ensure_initialized()
+
     if not _env_tool:
         raise MCPKGSkillsError("Server not initialized")
 
@@ -364,6 +354,8 @@ async def execute(
         )
         ```
     """
+    await _ensure_initialized()
+
     if not _execute_tool:
         raise MCPKGSkillsError("Server not initialized")
 
@@ -443,6 +435,8 @@ async def query(
         )
         ```
     """
+    await _ensure_initialized()
+
     if not _query_tool:
         raise MCPKGSkillsError("Server not initialized")
 
