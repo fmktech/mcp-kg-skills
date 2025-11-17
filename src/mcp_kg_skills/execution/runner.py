@@ -323,22 +323,24 @@ class ScriptRunner:
         # Build uv command
         cmd = ["uv", "run", str(script_file)]
 
-        # Set up environment
-        env = {}
+        # Set up environment - start with parent process env
+        import os
+        env = dict(os.environ)
+
         if env_file:
-            # Load .env file into environment
+            # Load .env file and merge into environment
             env_vars = self.env_manager.load_env_to_dict(env_file)
             env.update(env_vars)
 
         try:
             logger.info(f"Executing script with uv: {script_file}")
 
-            # Run the command
+            # Run the command with inherited + custom environment
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env={**env} if env else None,
+                env=env,
             )
 
             try:

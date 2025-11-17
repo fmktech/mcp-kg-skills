@@ -329,11 +329,13 @@ class NodesTool:
     def _sanitize_env_node(self, node: dict[str, Any]) -> dict[str, Any]:
         """Sanitize ENV node to hide secret values."""
         sanitized = dict(node)
-        variables = sanitized.get("variables", {})
+        variables = sanitized.get("variables", {}).copy()
         secret_keys = sanitized.get("secret_keys", [])
 
-        sanitized["variables"] = self.secret_detector.sanitize_env_response(
-            variables, secret_keys
-        )
+        # Add secret keys with masked values to the variables dict
+        for key in secret_keys:
+            variables[key] = "<SECRET>"
+
+        sanitized["variables"] = variables
 
         return sanitized
