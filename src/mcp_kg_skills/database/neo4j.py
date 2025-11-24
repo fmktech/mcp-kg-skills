@@ -97,20 +97,22 @@ class Neo4jDatabase(DatabaseInterface):
             )
 
             # Index on node IDs for fast lookups
-            await session.run(
-                """
-                CREATE INDEX node_id_index IF NOT EXISTS
-                FOR (n:SKILL|KNOWLEDGE|SCRIPT|ENV) ON (n.id)
-                """
-            )
+            for node_type in ["SKILL", "KNOWLEDGE", "SCRIPT", "ENV"]:
+                await session.run(
+                    f"""
+                    CREATE INDEX {node_type.lower()}_id_index IF NOT EXISTS
+                    FOR (n:{node_type}) ON (n.id)
+                    """
+                )
 
             # Index on created_at for temporal queries
-            await session.run(
-                """
-                CREATE INDEX created_at_index IF NOT EXISTS
-                FOR (n:SKILL|KNOWLEDGE|SCRIPT|ENV) ON (n.created_at)
-                """
-            )
+            for node_type in ["SKILL", "KNOWLEDGE", "SCRIPT", "ENV"]:
+                await session.run(
+                    f"""
+                    CREATE INDEX {node_type.lower()}_created_at_index IF NOT EXISTS
+                    FOR (n:{node_type}) ON (n.created_at)
+                    """
+                )
 
             logger.info("Database schema initialized")
 

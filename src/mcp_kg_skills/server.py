@@ -1,5 +1,6 @@
 """FastMCP server for MCP Knowledge Graph Skills."""
 
+import json
 import logging
 from typing import Any
 
@@ -100,8 +101,8 @@ async def nodes(
     operation: str,
     node_type: str,
     node_id: str | None = None,
-    data: dict[str, Any] | None = None,
-    filters: dict[str, Any] | None = None,
+    data: dict[str, Any] | str | None = None,
+    filters: dict[str, Any] | str | None = None,
 ) -> dict[str, Any]:
     """Manage graph nodes (SKILL, KNOWLEDGE, SCRIPT, ENV).
 
@@ -111,8 +112,8 @@ async def nodes(
         operation: Operation to perform (create, read, update, delete, list)
         node_type: Type of node (SKILL, KNOWLEDGE, SCRIPT, ENV)
         node_id: Node ID (for read, update, delete)
-        data: Node data (for create, update)
-        filters: Filter criteria (for list)
+        data: Node data (for create, update) - can be dict or JSON string
+        filters: Filter criteria (for list) - can be dict or JSON string
 
     Returns:
         Operation result
@@ -146,12 +147,31 @@ async def nodes(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
+        # Parse JSON strings if provided
+        parsed_data: dict[str, Any] | None = None
+        if isinstance(data, str):
+            try:
+                parsed_data = json.loads(data)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"Invalid JSON in data parameter: {e}"}
+        elif data is not None:
+            parsed_data = data
+
+        parsed_filters: dict[str, Any] | None = None
+        if isinstance(filters, str):
+            try:
+                parsed_filters = json.loads(filters)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"Invalid JSON in filters parameter: {e}"}
+        elif filters is not None:
+            parsed_filters = filters
+
         return await _nodes_tool.handle(
             operation=operation,
             node_type=node_type,
             node_id=node_id,
-            data=data,
-            filters=filters,
+            data=parsed_data,
+            filters=parsed_filters,
         )
     except MCPKGSkillsError:
         raise
@@ -166,7 +186,7 @@ async def relationships(
     relationship_type: str | None = None,
     source_id: str | None = None,
     target_id: str | None = None,
-    properties: dict[str, Any] | None = None,
+    properties: dict[str, Any] | str | None = None,
     rel_id: str | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -181,7 +201,7 @@ async def relationships(
         relationship_type: Type of relationship (CONTAINS, RELATE_TO)
         source_id: Source node ID
         target_id: Target node ID
-        properties: Relationship properties
+        properties: Relationship properties - can be dict or JSON string
         rel_id: Relationship ID (for delete)
         limit: Maximum results (for list)
         offset: Offset for pagination (for list)
@@ -214,12 +234,22 @@ async def relationships(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
+        # Parse JSON string if provided
+        parsed_properties: dict[str, Any] | None = None
+        if isinstance(properties, str):
+            try:
+                parsed_properties = json.loads(properties)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"Invalid JSON in properties parameter: {e}"}
+        elif properties is not None:
+            parsed_properties = properties
+
         return await _relationships_tool.handle(
             operation=operation,
             relationship_type=relationship_type,
             source_id=source_id,
             target_id=target_id,
-            properties=properties,
+            properties=parsed_properties,
             rel_id=rel_id,
             limit=limit,
             offset=offset,
@@ -237,8 +267,8 @@ async def env(
     env_id: str | None = None,
     name: str | None = None,
     description: str | None = None,
-    variables: dict[str, str] | None = None,
-    keys: list[str] | None = None,
+    variables: dict[str, str] | str | None = None,
+    keys: list[str] | str | None = None,
 ) -> dict[str, Any]:
     """Manage environment variables with automatic secret detection.
 
@@ -251,8 +281,8 @@ async def env(
         env_id: ENV node ID
         name: ENV name (for create)
         description: ENV description
-        variables: Environment variables
-        keys: Variable keys to retrieve (for list_keys)
+        variables: Environment variables - can be dict or JSON string
+        keys: Variable keys to retrieve (for list_keys) - can be list or JSON string
 
     Returns:
         Operation result with secrets masked
@@ -286,13 +316,32 @@ async def env(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
+        # Parse JSON strings if provided
+        parsed_variables: dict[str, str] | None = None
+        if isinstance(variables, str):
+            try:
+                parsed_variables = json.loads(variables)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"Invalid JSON in variables parameter: {e}"}
+        elif variables is not None:
+            parsed_variables = variables
+
+        parsed_keys: list[str] | None = None
+        if isinstance(keys, str):
+            try:
+                parsed_keys = json.loads(keys)
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": f"Invalid JSON in keys parameter: {e}"}
+        elif keys is not None:
+            parsed_keys = keys
+
         return await _env_tool.handle(
             operation=operation,
             env_id=env_id,
             name=name,
             description=description,
-            variables=variables,
-            keys=keys,
+            variables=parsed_variables,
+            keys=parsed_keys,
         )
     except MCPKGSkillsError:
         raise
@@ -304,7 +353,7 @@ async def env(
 @mcp.tool()
 async def execute(
     code: str,
-    imports: list[str] | None = None,
+    imports: list[str] | str | None = None,
     timeout: int = 300,
 ) -> dict[str, Any]:
     """Execute Python code with dynamically imported functions from SCRIPT nodes.
@@ -318,7 +367,7 @@ async def execute(
 
     Args:
         code: Python code to execute
-        imports: List of SCRIPT node names to import (their functions will be available)
+        imports: List of SCRIPT node names to import - can be list or JSON string
         timeout: Execution timeout in seconds (max 600)
 
     Returns:
@@ -360,9 +409,26 @@ async def execute(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
+        # Parse JSON string if provided
+        parsed_imports: list[str] | None = None
+        if isinstance(imports, str):
+            try:
+                parsed_imports = json.loads(imports)
+            except json.JSONDecodeError as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid JSON in imports parameter: {e}",
+                    "stdout": "",
+                    "stderr": str(e),
+                    "return_code": 1,
+                    "execution_time": 0.0,
+                }
+        elif imports is not None:
+            parsed_imports = imports
+
         return await _execute_tool.handle(
             code=code,
-            imports=imports,
+            imports=parsed_imports,
             timeout=min(timeout, _config.execution.max_timeout)
             if _config
             else timeout,
@@ -384,7 +450,7 @@ async def execute(
 @mcp.tool()
 async def query(
     cypher: str,
-    parameters: dict[str, Any] | None = None,
+    parameters: dict[str, Any] | str | None = None,
     limit: int = 100,
 ) -> dict[str, Any]:
     """Execute read-only Cypher queries to explore the knowledge graph.
@@ -394,7 +460,7 @@ async def query(
 
     Args:
         cypher: Read-only Cypher query
-        parameters: Query parameters
+        parameters: Query parameters - can be dict or JSON string
         limit: Maximum number of results (max 1000)
 
     Returns:
@@ -441,9 +507,24 @@ async def query(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
+        # Parse JSON string if provided
+        parsed_parameters: dict[str, Any] | None = None
+        if isinstance(parameters, str):
+            try:
+                parsed_parameters = json.loads(parameters)
+            except json.JSONDecodeError as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid JSON in parameters parameter: {e}",
+                    "results": [],
+                    "count": 0,
+                }
+        elif parameters is not None:
+            parsed_parameters = parameters
+
         return await _query_tool.handle(
             cypher=cypher,
-            parameters=parameters,
+            parameters=parsed_parameters,
             limit=min(limit, 1000),
         )
     except MCPKGSkillsError:
