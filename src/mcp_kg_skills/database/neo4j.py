@@ -542,7 +542,7 @@ class Neo4jDatabase(DatabaseInterface):
 
                 # Convert records to list of dicts
                 results = []
-                keys = await result.keys()
+                keys = result.keys()
                 for record in records[:limit]:
                     result_dict = {}
                     for i, key in enumerate(keys):
