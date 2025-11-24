@@ -11,6 +11,47 @@ A Model Context Protocol (MCP) server that manages a graph of reusable Python fu
 - **Relationship Tracking**: Connect related skills and resources with CONTAINS and RELATE_TO relationships
 - **Flexible Querying**: Explore the knowledge graph using read-only Cypher queries
 
+## Quick Start
+
+Get started in 3 steps:
+
+```bash
+# 1. Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Start Neo4j (using Docker)
+docker run -d --name neo4j -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:latest
+
+# 3. Create config file
+mkdir -p ~/.mcp-kg-skills/config
+cat > ~/.mcp-kg-skills/config/database.yaml << 'EOF'
+database:
+  uri: "bolt://localhost:7687"
+  username: "neo4j"
+  password: "password"
+  database: "neo4j"
+execution:
+  cache_dir: "~/.mcp-kg-skills/cache"
+  env_dir: "~/.mcp-kg-skills/envs"
+  default_timeout: 300
+  max_timeout: 600
+security:
+  secret_patterns:
+    - "^SECRET_"
+    - "_SECRET$"
+    - "^.*_KEY$"
+    - "^.*_PASSWORD$"
+    - "^.*_TOKEN$"
+logging:
+  level: "INFO"
+EOF
+
+# 4. Run the server
+uvx mcp-kg-skills
+```
+
+That's it! Now configure your MCP client (see [MCP Client Configuration](#mcp-client-configuration)).
+
 ## Architecture
 
 ```
@@ -61,9 +102,24 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 ### Install MCP Knowledge Graph Skills
 
+#### Option 1: From PyPI (Recommended)
+
+```bash
+# Install directly from PyPI
+pip install mcp-kg-skills
+
+# Or using uv
+uv pip install mcp-kg-skills
+
+# Or run with uvx (no installation needed)
+uvx mcp-kg-skills
+```
+
+#### Option 2: From Source (Development)
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mcp-kg-skills.git
+git clone https://github.com/fmktech/mcp-kg-skills.git
 cd mcp-kg-skills
 
 # Install with uv
@@ -94,20 +150,14 @@ Sign up at [console.neo4j.io](https://console.neo4j.io)
 
 ### 1. Create Configuration File
 
+Create the config directory and file:
+
 ```bash
-# Create config directory in home
+# Create config directory
 mkdir -p ~/.mcp-kg-skills/config
 
-# Copy example configuration to home directory
-cp .mcp-kg-skills/config/database.yaml.example \
-   ~/.mcp-kg-skills/config/database.yaml
-```
-
-### 2. Edit Configuration
-
-Edit `~/.mcp-kg-skills/config/database.yaml`:
-
-```yaml
+# Create configuration file
+cat > ~/.mcp-kg-skills/config/database.yaml << 'EOF'
 database:
   uri: "bolt://localhost:7687"
   username: "neo4j"
@@ -122,30 +172,87 @@ execution:
 
 security:
   secret_patterns:
-    - "SECRET_*"
-    - "*_SECRET"
-    - "*_KEY"
-    - "*_PASSWORD"
-    - "*_TOKEN"
-    - "*_API_KEY"
-    - "*_PRIVATE_KEY"
+    - "^SECRET_"
+    - "_SECRET$"
+    - "^.*_KEY$"
+    - "^.*_PASSWORD$"
+    - "^.*_TOKEN$"
 
 logging:
   level: "INFO"
+EOF
 ```
 
-### 3. Set Environment Variables
+**If you cloned the repository**, you can copy the example:
+
+```bash
+cp .mcp-kg-skills/config/database.yaml.example \
+   ~/.mcp-kg-skills/config/database.yaml
+```
+
+### 2. Configure Neo4j Connection
+
+Edit `~/.mcp-kg-skills/config/database.yaml` and update:
+
+- `uri`: Your Neo4j connection URI (e.g., `bolt://localhost:7687` or Neo4j Aura URI)
+- `username`: Your Neo4j username (default: `neo4j`)
+- `password`: Your Neo4j password (or use environment variable `${NEO4J_PASSWORD}`)
+- `database`: Database name (default: `neo4j`)
+
+### 3. Set Environment Variables (Optional)
+
+If using environment variables for passwords:
 
 ```bash
 # Set Neo4j password
 export NEO4J_PASSWORD="your-password"
+
+# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
+echo 'export NEO4J_PASSWORD="your-password"' >> ~/.zshrc
 ```
 
 ## MCP Client Configuration
 
 ### Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+Add to your Claude Desktop config file:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+#### Option 1: Using uvx (Recommended - No Installation Required)
+
+```json
+{
+  "mcpServers": {
+    "mcp-kg-skills": {
+      "command": "uvx",
+      "args": ["mcp-kg-skills"],
+      "env": {
+        "NEO4J_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+#### Option 2: Using pip-installed package
+
+```json
+{
+  "mcpServers": {
+    "mcp-kg-skills": {
+      "command": "mcp-kg-skills",
+      "env": {
+        "NEO4J_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+#### Option 3: Using uv with local development installation
 
 ```json
 {
@@ -165,6 +272,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   }
 }
 ```
+
+**Note**: Replace `/path/to/mcp-kg-skills` with the actual path to your cloned repository.
 
 ## Usage
 
