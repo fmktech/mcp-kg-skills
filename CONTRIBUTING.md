@@ -66,9 +66,12 @@ uv pip install -e ".[dev]"
 # Start Neo4j
 docker compose up -d neo4j
 
+# Create config directory in home
+mkdir -p ~/.mcp-kg-skills/config
+
 # Create config
 cp .mcp-kg-skills/config/database.yaml.example \
-   .mcp-kg-skills/config/database.yaml
+   ~/.mcp-kg-skills/config/database.yaml
 
 # Set password
 export NEO4J_PASSWORD="testpassword"

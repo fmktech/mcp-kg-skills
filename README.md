@@ -95,25 +95,28 @@ Sign up at [console.neo4j.io](https://console.neo4j.io)
 ### 1. Create Configuration File
 
 ```bash
-# Copy example configuration
+# Create config directory in home
+mkdir -p ~/.mcp-kg-skills/config
+
+# Copy example configuration to home directory
 cp .mcp-kg-skills/config/database.yaml.example \
-   .mcp-kg-skills/config/database.yaml
+   ~/.mcp-kg-skills/config/database.yaml
 ```
 
 ### 2. Edit Configuration
 
-Edit `.mcp-kg-skills/config/database.yaml`:
+Edit `~/.mcp-kg-skills/config/database.yaml`:
 
 ```yaml
-neo4j:
+database:
   uri: "bolt://localhost:7687"
   username: "neo4j"
   password: "${NEO4J_PASSWORD}"  # Or set directly: "your-password"
   database: "neo4j"
 
 execution:
-  cache_dir: ".mcp-kg-skills/cache"
-  env_dir: ".mcp-kg-skills/envs"
+  cache_dir: "~/.mcp-kg-skills/cache"
+  env_dir: "~/.mcp-kg-skills/envs"
   default_timeout: 300
   max_timeout: 600
 
@@ -124,6 +127,8 @@ security:
     - "*_KEY"
     - "*_PASSWORD"
     - "*_TOKEN"
+    - "*_API_KEY"
+    - "*_PRIVATE_KEY"
 
 logging:
   level: "INFO"
@@ -588,7 +593,7 @@ Environment variables matching these patterns are automatically detected as secr
 
 ### Secret Protection
 
-1. **Storage**: Secrets are stored in `.env` files (gitignored)
+1. **Storage**: Secrets are stored in `~/.mcp-kg-skills/envs/*.env` files (outside project directory)
 2. **API Responses**: Secret values are replaced with `<SECRET>`
 3. **Execution Output**: Secret values are replaced with `<REDACTED>`
 4. **File Permissions**: `.env` files are created with `0600` permissions
@@ -813,8 +818,8 @@ uv --version
 
 ```bash
 # Fix directory permissions
-chmod 700 .mcp-kg-skills/envs/
-chmod 600 .mcp-kg-skills/envs/*.env
+chmod 700 ~/.mcp-kg-skills/envs/
+chmod 600 ~/.mcp-kg-skills/envs/*.env
 ```
 
 ## License

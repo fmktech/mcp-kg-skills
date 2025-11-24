@@ -17,7 +17,7 @@ class EnvFileManager:
         """Initialize environment file manager.
 
         Args:
-            env_dir: Directory to store .env files (e.g., .mcp-kg-skills/envs/)
+            env_dir: Directory to store .env files (e.g., ~/.mcp-kg-skills/envs/)
         """
         self.env_dir = Path(env_dir)
         self.env_dir.mkdir(parents=True, exist_ok=True)

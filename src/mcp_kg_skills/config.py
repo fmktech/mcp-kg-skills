@@ -36,11 +36,11 @@ class ExecutionConfig(BaseSettings):
     """Script execution configuration."""
 
     cache_dir: Path = Field(
-        default=Path(".mcp-kg-skills/cache"),
+        default="~/.mcp-kg-skills/cache",
         description="Directory for execution cache",
     )
     env_dir: Path = Field(
-        default=Path(".mcp-kg-skills/envs"),
+        default="~/.mcp-kg-skills/envs",
         description="Directory for ENV files",
     )
     default_timeout: int = Field(
@@ -259,9 +259,9 @@ def get_default_config_path() -> Path:
     """Get the default configuration file path.
 
     Returns:
-        Path to .mcp-kg-skills/config/database.yaml
+        Path to ~/.mcp-kg-skills/config/database.yaml
     """
-    return Path(".mcp-kg-skills/config/database.yaml")
+    return Path("~/.mcp-kg-skills/config/database.yaml").expanduser()
 
 
 def load_config(config_path: Path | str | None = None) -> AppConfig:
