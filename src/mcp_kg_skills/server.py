@@ -239,6 +239,9 @@ async def relationships(
         if isinstance(properties, str):
             try:
                 parsed_properties = json.loads(properties)
+                # Handle double-encoded JSON (e.g., "{}" as a string containing "{}")
+                if isinstance(parsed_properties, str):
+                    parsed_properties = json.loads(parsed_properties)
             except json.JSONDecodeError as e:
                 return {"success": False, "error": f"Invalid JSON in properties parameter: {e}"}
         elif properties is not None:

@@ -1,7 +1,7 @@
 """Neo4j database implementation for MCP Knowledge Graph Skills."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession
@@ -10,6 +10,7 @@ from neo4j.exceptions import (
     Neo4jError,
     ServiceUnavailable,
 )
+from neo4j.time import DateTime as Neo4jDateTime
 
 from ..exceptions import (
     CircularDependencyError,
@@ -22,6 +23,26 @@ from ..exceptions import (
 from .abstract import DatabaseInterface
 
 logger = logging.getLogger(__name__)
+
+
+def _convert_neo4j_types(value: Any) -> Any:
+    """Convert Neo4j types to JSON-serializable Python types.
+
+    Args:
+        value: Value to convert
+
+    Returns:
+        JSON-serializable value
+    """
+    if isinstance(value, Neo4jDateTime):
+        # Convert Neo4j DateTime to ISO format string
+        return value.iso_format()
+    elif isinstance(value, dict):
+        return {k: _convert_neo4j_types(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple)):
+        return [_convert_neo4j_types(item) for item in value]
+    else:
+        return value
 
 
 class Neo4jDatabase(DatabaseInterface):
@@ -138,7 +159,7 @@ class Neo4jDatabase(DatabaseInterface):
             raise DatabaseConnectionError("Not connected to database")
 
         # Ensure timestamps are set
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
 
@@ -155,7 +176,7 @@ class Neo4jDatabase(DatabaseInterface):
                 if not record:
                     raise DatabaseConnectionError("Failed to create node")
 
-                node = dict(record["n"])
+                node = _convert_neo4j_types(dict(record["n"]))
                 logger.info(f"Created {node_type} node: {node.get('id')}")
                 return node
 
@@ -180,7 +201,7 @@ class Neo4jDatabase(DatabaseInterface):
                 node_id=node_id,
             )
             record = await result.single()
-            return dict(record["n"]) if record else None
+            return _convert_neo4j_types(dict(record["n"])) if record else None
 
     async def read_node_by_name(self, node_type: str, name: str) -> dict[str, Any] | None:
         """Retrieve a node by type and name."""
@@ -196,7 +217,7 @@ class Neo4jDatabase(DatabaseInterface):
                 name=name,
             )
             record = await result.single()
-            return dict(record["n"]) if record else None
+            return _convert_neo4j_types(dict(record["n"])) if record else None
 
     async def update_node(self, node_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing node."""
@@ -204,7 +225,7 @@ class Neo4jDatabase(DatabaseInterface):
             raise DatabaseConnectionError("Not connected to database")
 
         # Update timestamp
-        data["updated_at"] = datetime.utcnow()
+        data["updated_at"] = datetime.now(timezone.utc)
 
         async with self.driver.session(database=self.database) as session:
             try:
@@ -221,7 +242,7 @@ class Neo4jDatabase(DatabaseInterface):
                 if not record:
                     raise NodeNotFoundError(node_id)
 
-                node = dict(record["n"])
+                node = _convert_neo4j_types(dict(record["n"]))
                 logger.info(f"Updated node: {node_id}")
                 return node
 
@@ -295,7 +316,7 @@ class Neo4jDatabase(DatabaseInterface):
         async with self.driver.session(database=self.database) as session:
             result = await session.run(query, **params)
             records = await result.values()
-            return [dict(record[0]) for record in records]
+            return [_convert_neo4j_types(dict(record[0])) for record in records]
 
     # Relationship Operations
 
@@ -316,7 +337,7 @@ class Neo4jDatabase(DatabaseInterface):
                 raise CircularDependencyError(source_id, target_id)
 
         properties = properties or {}
-        properties.setdefault("created_at", datetime.utcnow())
+        properties.setdefault("created_at", datetime.now(timezone.utc))
 
         async with self.driver.session(database=self.database) as session:
             result = await session.run(
@@ -343,7 +364,7 @@ class Neo4jDatabase(DatabaseInterface):
                 "type": rel_type,
                 "source_id": record["source_id"],
                 "target_id": record["target_id"],
-                **dict(record["r"]),
+                **_convert_neo4j_types(dict(record["r"])),
             }
 
             logger.info(f"Created {rel_type} relationship: {source_id} -> {target_id}")
@@ -454,7 +475,7 @@ class Neo4jDatabase(DatabaseInterface):
 
             relationships = []
             for record in records:
-                rel_data = dict(record[0])  # r properties
+                rel_data = _convert_neo4j_types(dict(record[0]))  # r properties
                 relationship = {
                     "id": str(record[1]),  # rel_id
                     "type": record[2],  # rel_type
@@ -513,7 +534,7 @@ class Neo4jDatabase(DatabaseInterface):
         async with self.driver.session(database=self.database) as session:
             result = await session.run(query, node_id=node_id)
             records = await result.values()
-            return [dict(record[0]) for record in records]
+            return [_convert_neo4j_types(dict(record[0])) for record in records]
 
     # Query Operations
 
@@ -549,9 +570,9 @@ class Neo4jDatabase(DatabaseInterface):
                         value = record[i]
                         # Convert Neo4j types to Python types
                         if hasattr(value, "__dict__"):
-                            result_dict[key] = dict(value)
+                            result_dict[key] = _convert_neo4j_types(dict(value))
                         else:
-                            result_dict[key] = value
+                            result_dict[key] = _convert_neo4j_types(value)
                     results.append(result_dict)
 
                 return results
