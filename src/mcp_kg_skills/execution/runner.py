@@ -10,6 +10,7 @@ from ..database.abstract import DatabaseInterface
 from ..exceptions import NodeNotFoundError, ScriptExecutionError
 from ..security.secrets import SecretDetector
 from ..utils.env_file import EnvFileManager
+from ..utils.requires_parser import RequiresParser
 from ..utils.script_cleaner import ScriptCleaner
 from .dependency import PEP723Parser
 
@@ -141,26 +142,75 @@ class ScriptRunner:
             raise ScriptExecutionError(f"Execution failed: {e}")
 
     async def _load_scripts(self, script_names: list[str]) -> list[dict[str, Any]]:
-        """Load SCRIPT nodes by name.
+        """Load SCRIPT nodes by name, including auto-loading required dependencies.
+
+        Scripts can declare dependencies using "Requires:" directives in their
+        docstrings. These dependencies are automatically loaded before the
+        consumer script.
+
+        Example script with requires:
+            '''My consumer script.
+
+            Requires: vrya-jira-client
+            Requires: another-dependency
+            '''
 
         Args:
             script_names: List of script names to load
 
         Returns:
-            List of script node dictionaries
+            List of script node dictionaries in dependency order
+            (required scripts first, consumer scripts last)
 
         Raises:
             NodeNotFoundError: If any script doesn't exist
+            ScriptExecutionError: If circular dependency detected
         """
-        scripts = []
+        # Track loaded scripts to avoid duplicates and detect cycles
+        loaded: dict[str, dict[str, Any]] = {}
+        loading: set[str] = set()  # Currently being processed (for cycle detection)
 
-        for name in script_names:
+        async def load_with_deps(name: str) -> None:
+            """Recursively load a script and its dependencies."""
+            # Skip if already loaded
+            if name in loaded:
+                return
+
+            # Detect circular dependencies
+            if name in loading:
+                raise ScriptExecutionError(
+                    f"Circular dependency detected: '{name}' requires itself "
+                    f"(directly or transitively)"
+                )
+
+            loading.add(name)
+
+            # Load the script
             script = await self.db.read_node_by_name("SCRIPT", name)
             if not script:
                 raise NodeNotFoundError(name, "SCRIPT")
-            scripts.append(script)
 
-        logger.debug(f"Loaded {len(scripts)} scripts: {script_names}")
+            # Parse for Requires: directives
+            body = script.get("body", "")
+            required_names = RequiresParser.extract_requires(body)
+
+            # Load required scripts first (recursively)
+            for req_name in required_names:
+                await load_with_deps(req_name)
+
+            # Mark as loaded (after dependencies)
+            loading.remove(name)
+            loaded[name] = script
+
+        # Load all requested scripts with their dependencies
+        for name in script_names:
+            await load_with_deps(name)
+
+        # Return in insertion order (dependencies first due to recursive loading)
+        scripts = list(loaded.values())
+        logger.debug(
+            f"Loaded {len(scripts)} scripts (including dependencies): {list(loaded.keys())}"
+        )
         return scripts
 
     async def _load_environments(

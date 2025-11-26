@@ -135,6 +135,9 @@ async def nodes(
             - To use environment variables, create an ENV node and connect it to the
               SCRIPT using a CONTAINS relationship: SCRIPT -[:CONTAINS]-> ENV
               The ENV variables will be automatically loaded during execution
+            - Use "Requires:" directives in docstrings to declare script dependencies.
+              Example docstring: "My consumer script. Requires: vrya-jira-client"
+              Required scripts are automatically loaded when executing the consumer
 
         Examples:
             Create a SKILL node:
@@ -407,6 +410,7 @@ async def execute(
 
     The system automatically:
     - Loads specified SCRIPT nodes
+    - Auto-loads scripts declared via "Requires:" directives in docstrings
     - Merges their PEP 723 dependencies
     - Loads ENV variables from connected nodes AND directly specified envs
     - Executes code using 'uv run'
@@ -419,6 +423,18 @@ async def execute(
 
         WRONG: from my_script import MyClass  # Scripts are NOT modules!
         CORRECT: obj = MyClass()  # Class is already in scope
+
+    Auto-loading with "Requires:" directives:
+        Scripts can declare dependencies in their module docstring using
+        "Requires: script-name" lines. Example:
+            \"\"\"My consumer script.
+            Requires: vrya-jira-client
+            Requires: data-processor
+            \"\"\"
+        When you import "my-consumer-script", its required scripts
+        (vrya-jira-client, data-processor) are automatically loaded first.
+        This is transitive - if data-processor requires other scripts, they
+        are also loaded automatically.
 
     Args:
         code: Python code to execute
