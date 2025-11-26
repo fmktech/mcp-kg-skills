@@ -400,6 +400,7 @@ async def env(
 async def execute(
     code: str,
     imports: list[str] | str | None = None,
+    envs: list[str] | str | None = None,
     timeout: int = 300,
 ) -> dict[str, Any]:
     """Execute Python code with dynamically imported functions from SCRIPT nodes.
@@ -407,7 +408,7 @@ async def execute(
     The system automatically:
     - Loads specified SCRIPT nodes
     - Merges their PEP 723 dependencies
-    - Loads connected ENV variables (with secrets available but hidden from output)
+    - Loads ENV variables from connected nodes AND directly specified envs
     - Executes code using 'uv run'
     - Sanitizes output to remove secret values
 
@@ -422,6 +423,8 @@ async def execute(
     Args:
         code: Python code to execute
         imports: List of SCRIPT node names to import - can be list or JSON string
+        envs: List of ENV node names to load directly - can be list or JSON string
+              (in addition to ENVs connected to imported scripts via CONTAINS)
         timeout: Execution timeout in seconds (max 600)
 
     Returns:
@@ -450,10 +453,15 @@ async def execute(
         )
         ```
 
-        Execute standalone code:
+        Execute with direct ENV loading:
         ```
         execute(
-            code="print('Hello, World!')",
+            code=\"\"\"
+            import os
+            api_key = os.getenv("API_KEY")
+            print(f"Using API key: {api_key[:4]}...")
+            \"\"\",
+            envs=["production-env"],
             timeout=10
         )
         ```
@@ -464,7 +472,7 @@ async def execute(
         raise MCPKGSkillsError("Server not initialized")
 
     try:
-        # Parse JSON string if provided
+        # Parse JSON strings if provided
         parsed_imports: list[str] | None = None
         if isinstance(imports, str):
             try:
@@ -481,9 +489,26 @@ async def execute(
         elif imports is not None:
             parsed_imports = imports
 
+        parsed_envs: list[str] | None = None
+        if isinstance(envs, str):
+            try:
+                parsed_envs = json.loads(envs)
+            except json.JSONDecodeError as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid JSON in envs parameter: {e}",
+                    "stdout": "",
+                    "stderr": str(e),
+                    "return_code": 1,
+                    "execution_time": 0.0,
+                }
+        elif envs is not None:
+            parsed_envs = envs
+
         return await _execute_tool.handle(
             code=code,
             imports=parsed_imports,
+            envs=parsed_envs,
             timeout=min(timeout, _config.execution.max_timeout) if _config else timeout,
         )
     except MCPKGSkillsError:

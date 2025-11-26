@@ -46,6 +46,7 @@ class ScriptRunner:
         self,
         code: str,
         imports: list[str] | None = None,
+        envs: list[str] | None = None,
         timeout: int = 300,
     ) -> dict[str, Any]:
         """Execute Python code with imported scripts.
@@ -53,16 +54,19 @@ class ScriptRunner:
         Execution flow:
         1. Load SCRIPT nodes by name
         2. For each script, find connected ENV nodes
-        3. Parse PEP 723 dependencies from all scripts
-        4. Generate composite script with all imports
-        5. Create temporary .env file with merged environment
-        6. Execute with 'uv run --script <file>'
-        7. Sanitize output (remove secrets)
-        8. Return results
+        3. Load directly specified ENV nodes
+        4. Parse PEP 723 dependencies from all scripts
+        5. Generate composite script with all imports
+        6. Create temporary .env file with merged environment
+        7. Execute with 'uv run --script <file>'
+        8. Sanitize output (remove secrets)
+        9. Return results
 
         Args:
             code: Python code to execute
             imports: List of SCRIPT node names to import
+            envs: List of ENV node names to load directly (in addition to
+                  ENVs connected to imported scripts)
             timeout: Execution timeout in seconds
 
         Returns:
@@ -80,14 +84,15 @@ class ScriptRunner:
             ScriptExecutionError: If execution fails
         """
         imports = imports or []
+        envs = envs or []
         start_time = time.time()
 
         try:
             # Load all requested scripts
             scripts = await self._load_scripts(imports)
 
-            # Load and merge environment variables
-            env_vars, secret_values = await self._load_environments(scripts)
+            # Load and merge environment variables (from scripts + direct envs)
+            env_vars, secret_values = await self._load_environments(scripts, envs)
 
             # Merge dependencies from all scripts
             merged_deps = self._merge_dependencies(scripts)
@@ -159,12 +164,19 @@ class ScriptRunner:
         return scripts
 
     async def _load_environments(
-        self, scripts: list[dict[str, Any]]
+        self,
+        scripts: list[dict[str, Any]],
+        env_names: list[str] | None = None,
     ) -> tuple[dict[str, str], list[str]]:
-        """Load and merge environment variables from connected ENV nodes.
+        """Load and merge environment variables from ENV nodes.
+
+        ENVs are loaded from two sources:
+        1. ENV nodes connected to scripts via CONTAINS relationships
+        2. Directly specified ENV node names
 
         Args:
             scripts: List of script node dictionaries
+            env_names: List of ENV node names to load directly
 
         Returns:
             Tuple of (all_variables, secret_values):
@@ -173,35 +185,55 @@ class ScriptRunner:
         """
         all_variables: dict[str, str] = {}
         secret_values: list[str] = []
+        env_names = env_names or []
 
+        # Collect all ENV nodes to load
+        env_nodes_to_load: list[dict[str, Any]] = []
+
+        # 1. Find ENV nodes connected to scripts via CONTAINS relationship
         for script in scripts:
             script_id = script["id"]
-
-            # Find connected ENV nodes via CONTAINS relationship
-            env_nodes = await self.db.get_connected_nodes(
+            connected_nodes = await self.db.get_connected_nodes(
                 script_id, rel_type="CONTAINS", direction="outgoing"
             )
+            for node in connected_nodes:
+                if "variables" in node:
+                    env_nodes_to_load.append(node)
 
-            for env_node in env_nodes:
-                # Check if this is an ENV node
-                if "variables" not in env_node:
-                    continue
+        # 2. Load directly specified ENV nodes by name
+        for env_name in env_names:
+            env_node = await self.db.read_node_by_name("ENV", env_name)
+            if not env_node:
+                raise NodeNotFoundError(env_name, "ENV")
+            env_nodes_to_load.append(env_node)
 
-                env_id = env_node["id"]
+        # Deduplicate by ID
+        seen_ids: set[str] = set()
+        unique_env_nodes = []
+        for env_node in env_nodes_to_load:
+            env_id = env_node["id"]
+            if env_id not in seen_ids:
+                seen_ids.add(env_id)
+                unique_env_nodes.append(env_node)
 
-                # Load full env vars from .env file
-                if self.env_manager.env_file_exists(env_id):
-                    env_file_vars = self.env_manager.read_env_file(env_id)
-                    all_variables.update(env_file_vars)
+        # Load variables from all ENV nodes
+        for env_node in unique_env_nodes:
+            env_id = env_node["id"]
 
-                    # Collect secret values for sanitization
-                    secret_keys = env_node.get("secret_keys", [])
-                    for key in secret_keys:
-                        if key in env_file_vars:
-                            secret_values.append(env_file_vars[key])
+            # Load full env vars from .env file
+            if self.env_manager.env_file_exists(env_id):
+                env_file_vars = self.env_manager.read_env_file(env_id)
+                all_variables.update(env_file_vars)
+
+                # Collect secret values for sanitization
+                secret_keys = env_node.get("secret_keys", [])
+                for key in secret_keys:
+                    if key in env_file_vars:
+                        secret_values.append(env_file_vars[key])
 
         logger.debug(
-            f"Loaded {len(all_variables)} environment variables ({len(secret_values)} secrets)"
+            f"Loaded {len(all_variables)} environment variables "
+            f"from {len(unique_env_nodes)} ENV nodes ({len(secret_values)} secrets)"
         )
 
         return all_variables, secret_values

@@ -24,6 +24,7 @@ class ExecuteTool:
         self,
         code: str,
         imports: list[str] | None = None,
+        envs: list[str] | None = None,
         timeout: int = 300,
     ) -> dict[str, Any]:
         """Execute Python code with imported scripts.
@@ -31,6 +32,7 @@ class ExecuteTool:
         Args:
             code: Python code to execute
             imports: List of SCRIPT node names to import
+            envs: List of ENV node names to load directly
             timeout: Execution timeout in seconds
 
         Returns:
@@ -55,18 +57,28 @@ class ExecuteTool:
         if not isinstance(imports, list):
             raise ValidationError("imports must be a list of script names")
 
+        # Validate envs
+        envs = envs or []
+        if not isinstance(envs, list):
+            raise ValidationError("envs must be a list of ENV node names")
+
         try:
-            logger.info(f"Executing code with {len(imports)} imports (timeout: {timeout}s)")
+            logger.info(
+                f"Executing code with {len(imports)} imports, "
+                f"{len(envs)} envs (timeout: {timeout}s)"
+            )
 
             # Execute with runner
             result = await self.runner.execute(
                 code=code,
                 imports=imports,
+                envs=envs,
                 timeout=timeout,
             )
 
             # Add execution metadata
             result["imports"] = imports
+            result["envs"] = envs
             result["timeout"] = timeout
 
             # Log result
