@@ -132,6 +132,9 @@ async def nodes(
             - Export functions/classes that should be callable from user code
             - Keep example/test code in separate functions, not in __main__ blocks
             - Use PEP 723 metadata for dependencies
+            - To use environment variables, create an ENV node and connect it to the
+              SCRIPT using a CONTAINS relationship: SCRIPT -[:CONTAINS]-> ENV
+              The ENV variables will be automatically loaded during execution
 
         Examples:
             Create a SKILL node:
