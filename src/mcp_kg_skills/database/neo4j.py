@@ -1,5 +1,6 @@
 """Neo4j database implementation for MCP Knowledge Graph Skills."""
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -24,6 +25,9 @@ from .abstract import DatabaseInterface
 
 logger = logging.getLogger(__name__)
 
+# Fields that contain nested structures and need JSON serialization
+JSON_SERIALIZED_FIELDS = {"variables", "secret_keys", "properties"}
+
 
 def _convert_neo4j_types(value: Any) -> Any:
     """Convert Neo4j types to JSON-serializable Python types.
@@ -43,6 +47,50 @@ def _convert_neo4j_types(value: Any) -> Any:
         return [_convert_neo4j_types(item) for item in value]
     else:
         return value
+
+
+def _serialize_for_neo4j(data: dict[str, Any]) -> dict[str, Any]:
+    """Serialize nested structures to JSON strings for Neo4j storage.
+
+    Neo4j can only store primitive types (strings, numbers, booleans) or
+    arrays of primitives. This function converts nested dicts/lists to
+    JSON strings for storage.
+
+    Args:
+        data: Dictionary with potentially nested structures
+
+    Returns:
+        Dictionary with nested structures serialized to JSON strings
+    """
+    result = {}
+    for key, value in data.items():
+        if key in JSON_SERIALIZED_FIELDS and isinstance(value, (dict, list)):
+            result[key] = json.dumps(value)
+        else:
+            result[key] = value
+    return result
+
+
+def _deserialize_from_neo4j(data: dict[str, Any]) -> dict[str, Any]:
+    """Deserialize JSON strings back to Python structures.
+
+    Args:
+        data: Dictionary with JSON-serialized fields
+
+    Returns:
+        Dictionary with JSON strings parsed back to Python structures
+    """
+    result = {}
+    for key, value in data.items():
+        if key in JSON_SERIALIZED_FIELDS and isinstance(value, str):
+            try:
+                result[key] = json.loads(value)
+            except json.JSONDecodeError:
+                # If it's not valid JSON, keep as string
+                result[key] = value
+        else:
+            result[key] = _convert_neo4j_types(value)
+    return result
 
 
 class Neo4jDatabase(DatabaseInterface):
@@ -163,6 +211,9 @@ class Neo4jDatabase(DatabaseInterface):
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
 
+        # Serialize nested structures for Neo4j storage
+        serialized_data = _serialize_for_neo4j(data)
+
         async with self.driver.session(database=self.database) as session:
             try:
                 result = await session.run(
@@ -170,13 +221,14 @@ class Neo4jDatabase(DatabaseInterface):
                     CREATE (n:{node_type} $props)
                     RETURN n
                     """,
-                    props=data,
+                    props=serialized_data,
                 )
                 record = await result.single()
                 if not record:
                     raise DatabaseConnectionError("Failed to create node")
 
-                node = _convert_neo4j_types(dict(record["n"]))
+                # Deserialize back to Python structures
+                node = _deserialize_from_neo4j(dict(record["n"]))
                 logger.info(f"Created {node_type} node: {node.get('id')}")
                 return node
 
@@ -201,7 +253,9 @@ class Neo4jDatabase(DatabaseInterface):
                 node_id=node_id,
             )
             record = await result.single()
-            return _convert_neo4j_types(dict(record["n"])) if record else None
+            if record:
+                return _deserialize_from_neo4j(dict(record["n"]))
+            return None
 
     async def read_node_by_name(self, node_type: str, name: str) -> dict[str, Any] | None:
         """Retrieve a node by type and name."""
@@ -217,7 +271,9 @@ class Neo4jDatabase(DatabaseInterface):
                 name=name,
             )
             record = await result.single()
-            return _convert_neo4j_types(dict(record["n"])) if record else None
+            if record:
+                return _deserialize_from_neo4j(dict(record["n"]))
+            return None
 
     async def update_node(self, node_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing node."""
@@ -226,6 +282,9 @@ class Neo4jDatabase(DatabaseInterface):
 
         # Update timestamp
         data["updated_at"] = datetime.now(timezone.utc)
+
+        # Serialize nested structures for Neo4j storage
+        serialized_data = _serialize_for_neo4j(data)
 
         async with self.driver.session(database=self.database) as session:
             try:
@@ -236,13 +295,14 @@ class Neo4jDatabase(DatabaseInterface):
                     RETURN n
                     """,
                     node_id=node_id,
-                    props=data,
+                    props=serialized_data,
                 )
                 record = await result.single()
                 if not record:
                     raise NodeNotFoundError(node_id)
 
-                node = _convert_neo4j_types(dict(record["n"]))
+                # Deserialize back to Python structures
+                node = _deserialize_from_neo4j(dict(record["n"]))
                 logger.info(f"Updated node: {node_id}")
                 return node
 
@@ -316,7 +376,7 @@ class Neo4jDatabase(DatabaseInterface):
         async with self.driver.session(database=self.database) as session:
             result = await session.run(query, **params)
             records = await result.values()
-            return [_convert_neo4j_types(dict(record[0])) for record in records]
+            return [_deserialize_from_neo4j(dict(record[0])) for record in records]
 
     # Relationship Operations
 
@@ -534,7 +594,7 @@ class Neo4jDatabase(DatabaseInterface):
         async with self.driver.session(database=self.database) as session:
             result = await session.run(query, node_id=node_id)
             records = await result.values()
-            return [_convert_neo4j_types(dict(record[0])) for record in records]
+            return [_deserialize_from_neo4j(dict(record[0])) for record in records]
 
     # Query Operations
 
@@ -568,9 +628,9 @@ class Neo4jDatabase(DatabaseInterface):
                     result_dict = {}
                     for i, key in enumerate(keys):
                         value = record[i]
-                        # Convert Neo4j types to Python types
+                        # Convert Neo4j types to Python types and deserialize JSON fields
                         if hasattr(value, "__dict__"):
-                            result_dict[key] = _convert_neo4j_types(dict(value))
+                            result_dict[key] = _deserialize_from_neo4j(dict(value))
                         else:
                             result_dict[key] = _convert_neo4j_types(value)
                     results.append(result_dict)

@@ -54,10 +54,12 @@ class QueryTool:
             raise ValidationError("limit cannot exceed 1000")
 
         # Validate query is read-only
-        if not self._is_readonly_query(cypher):
+        is_readonly, violation = self._is_readonly_query(cypher)
+        if not is_readonly:
             raise InvalidQueryError(
-                "Query must be read-only. "
-                "Only MATCH, RETURN, WITH, WHERE, ORDER BY, SKIP, LIMIT are allowed."
+                f"Query contains write operation '{violation}' which is not allowed. "
+                "Only read-only operations are permitted: MATCH, RETURN, WITH, WHERE, "
+                "ORDER BY, SKIP, LIMIT. Use the nodes/relationships tools to modify data."
             )
 
         try:
@@ -91,14 +93,16 @@ class QueryTool:
             logger.error(f"Query execution failed: {e}")
             raise InvalidQueryError(f"Query execution failed: {e}")
 
-    def _is_readonly_query(self, cypher: str) -> bool:
+    def _is_readonly_query(self, cypher: str) -> tuple[bool, str | None]:
         """Check if a Cypher query is read-only.
 
         Args:
             cypher: Cypher query string
 
         Returns:
-            True if query is read-only, False otherwise
+            Tuple of (is_readonly, violation_keyword):
+            - is_readonly: True if query is read-only, False otherwise
+            - violation_keyword: The write keyword found, or None if read-only
         """
         cypher_upper = cypher.upper()
 
@@ -116,9 +120,9 @@ class QueryTool:
         for keyword in write_keywords:
             if keyword in cypher_upper:
                 logger.warning(f"Query contains write keyword: {keyword.strip()}")
-                return False
+                return False, keyword.strip()
 
-        return True
+        return True, None
 
     def _sanitize_results(self, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Sanitize query results to remove any potential secrets.

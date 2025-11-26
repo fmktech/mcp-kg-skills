@@ -9,7 +9,6 @@ from ..database.abstract import DatabaseInterface
 from ..exceptions import (
     CircularDependencyError,
     NodeNotFoundError,
-    RelationshipNotFoundError,
     ValidationError,
 )
 from ..models import Relationship, RelationshipFilter, RelationshipType
@@ -152,20 +151,27 @@ class RelationshipsTool:
         target_id: str | None,
         relationship_type: str | None,
     ) -> dict[str, Any]:
-        """Delete a relationship."""
+        """Delete a relationship.
+
+        This operation is idempotent - deleting a non-existent relationship returns success.
+        """
         if rel_id:
             # Delete by relationship ID
             deleted = await self.db.delete_relationship(rel_id)
 
-            if not deleted:
-                raise RelationshipNotFoundError(rel_id=rel_id)
-
-            logger.info(f"Deleted relationship: {rel_id}")
-
-            return {
-                "success": True,
-                "message": "Relationship deleted successfully",
-            }
+            if deleted:
+                logger.info(f"Deleted relationship: {rel_id}")
+                return {
+                    "success": True,
+                    "message": "Relationship deleted successfully",
+                }
+            else:
+                logger.debug(f"Relationship not found (already deleted): {rel_id}")
+                return {
+                    "success": True,
+                    "message": "Relationship not found (may have been already deleted)",
+                    "already_deleted": True,
+                }
 
         elif source_id or target_id or relationship_type:
             # Delete by criteria
@@ -174,11 +180,6 @@ class RelationshipsTool:
                 target_id=target_id,
                 rel_type=relationship_type,
             )
-
-            if deleted_count == 0:
-                raise RelationshipNotFoundError(
-                    source_id=source_id, target_id=target_id
-                )
 
             logger.info(f"Deleted {deleted_count} relationship(s)")
 

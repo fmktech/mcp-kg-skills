@@ -276,22 +276,29 @@ class NodesTool:
             }
 
     async def _delete(self, node_type: NodeType, node_id: str) -> dict[str, Any]:
-        """Delete a node."""
+        """Delete a node.
+
+        This operation is idempotent - deleting a non-existent node returns success.
+        """
         # Special handling for ENV nodes - delete .env file
         if node_type == NodeType.ENV:
             self.env_manager.delete_env_file(node_id)
 
         deleted = await self.db.delete_node(node_id)
 
-        if not deleted:
-            raise NodeNotFoundError(node_id, node_type.value)
-
-        logger.info(f"Deleted {node_type.value} node: {node_id}")
-
-        return {
-            "success": True,
-            "message": f"{node_type.value} node deleted successfully",
-        }
+        if deleted:
+            logger.info(f"Deleted {node_type.value} node: {node_id}")
+            return {
+                "success": True,
+                "message": f"{node_type.value} node deleted successfully",
+            }
+        else:
+            logger.debug(f"{node_type.value} node not found (already deleted): {node_id}")
+            return {
+                "success": True,
+                "message": f"{node_type.value} node not found (may have been already deleted)",
+                "already_deleted": True,
+            }
 
     async def _list(
         self, node_type: NodeType, filters: dict[str, Any]
