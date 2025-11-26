@@ -104,23 +104,29 @@ class QueryTool:
             - is_readonly: True if query is read-only, False otherwise
             - violation_keyword: The write keyword found, or None if read-only
         """
+        import re
+
         cypher_upper = cypher.upper()
 
         # List of write operations that are not allowed
+        # Must match as whole words to avoid false positives
+        # (e.g., "SET" in "CONTAINS" or "OFFSET")
         write_keywords = [
-            "CREATE ",
-            "DELETE ",
-            "REMOVE ",
-            "SET ",
-            "MERGE ",
-            "DETACH ",
-            "DROP ",
+            "CREATE",
+            "DELETE",
+            "REMOVE",
+            "SET",
+            "MERGE",
+            "DETACH",
+            "DROP",
         ]
 
         for keyword in write_keywords:
-            if keyword in cypher_upper:
-                logger.warning(f"Query contains write keyword: {keyword.strip()}")
-                return False, keyword.strip()
+            # Use word boundary to avoid matching substrings
+            pattern = rf"\b{keyword}\b"
+            if re.search(pattern, cypher_upper):
+                logger.warning(f"Query contains write keyword: {keyword}")
+                return False, keyword
 
         return True, None
 

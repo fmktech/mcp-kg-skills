@@ -647,9 +647,12 @@ class Neo4jDatabase(DatabaseInterface):
 
     def _is_readonly_query(self, cypher: str) -> bool:
         """Check if a Cypher query is read-only."""
+        import re
+
         cypher_upper = cypher.upper()
 
-        # List of write operations
+        # List of write operations - must match as whole words
+        # to avoid false positives (e.g., "SET" in "CONTAINS")
         write_keywords = [
             "CREATE",
             "DELETE",
@@ -661,7 +664,10 @@ class Neo4jDatabase(DatabaseInterface):
         ]
 
         for keyword in write_keywords:
-            if keyword in cypher_upper:
+            # Use word boundary to avoid matching substrings
+            # e.g., "SET" should not match "CONTAINS" or "OFFSET"
+            pattern = rf"\b{keyword}\b"
+            if re.search(pattern, cypher_upper):
                 return False
 
         return True
