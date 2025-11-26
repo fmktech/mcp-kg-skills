@@ -118,6 +118,13 @@ async def nodes(
     Returns:
         Operation result
 
+    SCRIPT Node Best Practices:
+        - Do NOT include `if __name__ == '__main__':` blocks - they are
+          automatically stripped during execution to prevent unintended side effects
+        - Export functions/classes that should be callable from user code
+        - Keep example/test code in separate functions, not in __main__ blocks
+        - Use PEP 723 metadata for dependencies
+
     Examples:
         Create a SKILL node:
         ```
@@ -128,6 +135,31 @@ async def nodes(
                 "name": "data-pipeline",
                 "description": "ETL pipeline for data processing",
                 "body": "# Data Pipeline\\n\\nThis skill..."
+            }
+        )
+        ```
+
+        Create a SCRIPT node (note: no __main__ block):
+        ```
+        nodes(
+            operation="create",
+            node_type="SCRIPT",
+            data={
+                "name": "fetch_data",
+                "description": "Fetch data from API",
+                "function_signature": "fetch_data(url: str) -> dict",
+                "body": '''# /// script
+# requires-python = ">=3.12"
+# dependencies = ["requests>=2.31.0"]
+# ///
+
+import requests
+
+def fetch_data(url: str) -> dict:
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
+'''
             }
         )
         ```
@@ -368,6 +400,14 @@ async def execute(
     - Executes code using 'uv run'
     - Sanitizes output to remove secret values
 
+    IMPORTANT - How imports work:
+        Scripts are CONCATENATED into a single file, NOT loaded as Python modules.
+        All classes, functions, and variables defined in imported scripts are
+        directly available in your code's namespace.
+
+        WRONG: from my_script import MyClass  # Scripts are NOT modules!
+        CORRECT: obj = MyClass()  # Class is already in scope
+
     Args:
         code: Python code to execute
         imports: List of SCRIPT node names to import - can be list or JSON string
@@ -388,7 +428,8 @@ async def execute(
         ```
         execute(
             code=\"\"\"
-            # Imported functions are available
+            # Functions/classes from imported scripts are directly available
+            # Do NOT use: from fetch_data import fetch_data
             data = fetch_data("https://api.example.com/data")
             df = process_data(data)
             print(df.head())

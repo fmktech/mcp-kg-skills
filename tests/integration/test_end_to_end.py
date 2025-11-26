@@ -380,6 +380,46 @@ def use_env():
         assert "password-456" not in result["stdout"]
         assert "<REDACTED>" in result["stdout"]
 
+    async def test_main_block_not_executed(
+        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
+    ):
+        """Test that __main__ blocks are stripped and don't execute during import.
+
+        SCRIPT nodes should NOT include `if __name__ == '__main__':` blocks.
+        These blocks are automatically stripped during execution composition
+        to prevent unintended side effects.
+        """
+        script_data = {
+            "name": "script_with_main",
+            "description": "Script with __main__ block that should be stripped",
+            "function_signature": "get_value() -> str",
+            "body": """# /// script
+# requires-python = ">=3.12"
+# ///
+
+def get_value() -> str:
+    return "success"
+
+if __name__ == '__main__':
+    raise RuntimeError("This should NOT run when imported!")
+""",
+        }
+        await clean_db.create_node("SCRIPT", script_data)
+
+        # Execute code using the script - __main__ block should be stripped
+        result = await script_runner.execute(
+            code='print(get_value())',
+            imports=["script_with_main"],
+            timeout=30,
+        )
+
+        # Should succeed because __main__ block was stripped
+        assert result["success"] is True
+        assert "success" in result["stdout"]
+        # RuntimeError should NOT appear
+        assert "RuntimeError" not in result["stderr"]
+        assert "This should NOT run" not in result["stderr"]
+
     async def test_error_handling_in_execution(
         self, clean_db: DatabaseInterface, script_runner: ScriptRunner
     ):

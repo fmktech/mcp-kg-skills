@@ -12,6 +12,7 @@ from ..database.abstract import DatabaseInterface
 from ..exceptions import NodeNotFoundError, ScriptExecutionError
 from ..security.secrets import SecretDetector
 from ..utils.env_file import EnvFileManager
+from ..utils.script_cleaner import ScriptCleaner
 from .dependency import PEP723Parser
 
 logger = logging.getLogger(__name__)
@@ -267,6 +268,11 @@ class ScriptRunner:
             # Remove PEP 723 metadata from individual scripts
             if PEP723Parser.has_metadata(body):
                 body = PEP723Parser._remove_metadata_block(body)
+
+            # Remove __main__ blocks to prevent unintended execution
+            # SCRIPT nodes should not include __main__ blocks
+            if ScriptCleaner.has_main_block(body):
+                body = ScriptCleaner.remove_main_block(body, script_name)
 
             lines.append(f"# Script: {script_name}")
             lines.append(body.strip())
