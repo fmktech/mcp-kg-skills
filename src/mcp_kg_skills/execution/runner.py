@@ -2,8 +2,6 @@
 
 import asyncio
 import logging
-import subprocess
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -95,9 +93,7 @@ class ScriptRunner:
             merged_deps = self._merge_dependencies(scripts)
 
             # Generate composite script
-            composite_script = self._generate_composite_script(
-                scripts, code, merged_deps
-            )
+            composite_script = self._generate_composite_script(scripts, code, merged_deps)
 
             # Create temporary script file
             script_file = self._create_temp_script_file(composite_script)
@@ -109,9 +105,7 @@ class ScriptRunner:
 
             try:
                 # Execute with uv
-                result = await self._execute_with_uv(
-                    script_file, env_file, timeout
-                )
+                result = await self._execute_with_uv(script_file, env_file, timeout)
 
                 execution_time = time.time() - start_time
 
@@ -207,8 +201,7 @@ class ScriptRunner:
                             secret_values.append(env_file_vars[key])
 
         logger.debug(
-            f"Loaded {len(all_variables)} environment variables "
-            f"({len(secret_values)} secrets)"
+            f"Loaded {len(all_variables)} environment variables ({len(secret_values)} secrets)"
         )
 
         return all_variables, secret_values
@@ -229,7 +222,7 @@ class ScriptRunner:
             deps = PEP723Parser.extract_dependencies(body, script.get("name"))
             all_deps.update(deps)
 
-        merged = sorted(list(all_deps))
+        merged = sorted(all_deps)
         logger.debug(f"Merged {len(merged)} unique dependencies")
         return merged
 
@@ -331,6 +324,7 @@ class ScriptRunner:
 
         # Set up environment - start with parent process env
         import os
+
         env = dict(os.environ)
 
         if env_file:
@@ -353,12 +347,10 @@ class ScriptRunner:
                 stdout_bytes, stderr_bytes = await asyncio.wait_for(
                     process.communicate(), timeout=timeout
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 await process.wait()
-                raise ScriptExecutionError(
-                    f"Script execution timed out after {timeout}s"
-                )
+                raise ScriptExecutionError(f"Script execution timed out after {timeout}s")
 
             stdout = stdout_bytes.decode("utf-8", errors="replace")
             stderr = stderr_bytes.decode("utf-8", errors="replace")
@@ -380,9 +372,7 @@ class ScriptRunner:
         except Exception as e:
             raise ScriptExecutionError(f"Failed to execute script: {e}")
 
-    def _sanitize_result(
-        self, result: dict[str, Any], secret_values: list[str]
-    ) -> dict[str, Any]:
+    def _sanitize_result(self, result: dict[str, Any], secret_values: list[str]) -> dict[str, Any]:
         """Sanitize execution result to remove secrets.
 
         Args:

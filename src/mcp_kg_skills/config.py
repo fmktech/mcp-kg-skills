@@ -167,7 +167,7 @@ class AppConfig(BaseSettings):
             raise ConfigurationError(f"Configuration file not found: {config_path}")
 
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 raw_content = f.read()
 
             # Substitute environment variables
@@ -203,9 +203,7 @@ class AppConfig(BaseSettings):
                 logger.info(f"Loading configuration from {config_path}")
                 return cls.load_from_file(config_path)
             else:
-                logger.warning(
-                    f"Configuration file not found: {config_path}. Using defaults."
-                )
+                logger.warning(f"Configuration file not found: {config_path}. Using defaults.")
 
         logger.info("Using default configuration")
         return cls()
@@ -230,10 +228,7 @@ class AppConfig(BaseSettings):
             value = os.environ.get(var_name)
 
             if value is None:
-                logger.warning(
-                    f"Environment variable '{var_name}' not found, "
-                    "leaving placeholder"
-                )
+                logger.warning(f"Environment variable '{var_name}' not found, leaving placeholder")
                 return match.group(0)
 
             return value

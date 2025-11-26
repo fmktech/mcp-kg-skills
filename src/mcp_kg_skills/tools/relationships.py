@@ -3,15 +3,13 @@
 import logging
 from typing import Any
 
-from pydantic import ValidationError as PydanticValidationError
-
 from ..database.abstract import DatabaseInterface
 from ..exceptions import (
     CircularDependencyError,
     NodeNotFoundError,
     ValidationError,
 )
-from ..models import Relationship, RelationshipFilter, RelationshipType
+from ..models import RelationshipType
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +61,12 @@ class RelationshipsTool:
         valid_operations = ["create", "delete", "list"]
         if operation not in valid_operations:
             raise ValidationError(
-                f"Invalid operation '{operation}'. "
-                f"Must be one of: {', '.join(valid_operations)}"
+                f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
             )
 
         # Route to appropriate handler
         if operation == "create":
-            return await self._create(
-                relationship_type, source_id, target_id, properties
-            )
+            return await self._create(relationship_type, source_id, target_id, properties)
         elif operation == "delete":
             return await self._delete(rel_id, source_id, target_id, relationship_type)
         elif operation == "list":
@@ -127,10 +122,7 @@ class RelationshipsTool:
                 properties or {},
             )
 
-            logger.info(
-                f"Created {rel_type_enum.value} relationship: "
-                f"{source_id} -> {target_id}"
-            )
+            logger.info(f"Created {rel_type_enum.value} relationship: {source_id} -> {target_id}")
 
             return {
                 "success": True,

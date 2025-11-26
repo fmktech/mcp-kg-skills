@@ -3,7 +3,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any
 
 from ..exceptions import EnvFileError
 
@@ -95,7 +94,7 @@ class EnvFileManager:
 
         try:
             variables = {}
-            with open(env_path, "r") as f:
+            with open(env_path) as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
 
@@ -105,9 +104,7 @@ class EnvFileManager:
 
                     # Parse KEY=VALUE
                     if "=" not in line:
-                        logger.warning(
-                            f"Invalid line {line_num} in {env_path}: missing '='"
-                        )
+                        logger.warning(f"Invalid line {line_num} in {env_path}: missing '='")
                         continue
 
                     key, value = line.split("=", 1)
@@ -176,7 +173,7 @@ class EnvFileManager:
 
         try:
             variables = {}
-            with open(env_path, "r") as f:
+            with open(env_path) as f:
                 for line in f:
                     line = line.strip()
                     if not line or line.startswith("#"):
@@ -250,9 +247,7 @@ class EnvFileManager:
 
         return value
 
-    def create_temp_env_file(
-        self, variables: dict[str, str], prefix: str = "temp"
-    ) -> Path:
+    def create_temp_env_file(self, variables: dict[str, str], prefix: str = "temp") -> Path:
         """Create a temporary .env file.
 
         Args:
@@ -265,7 +260,6 @@ class EnvFileManager:
         Raises:
             EnvFileError: If file creation fails
         """
-        import tempfile
         import uuid
 
         temp_id = f"{prefix}_{uuid.uuid4().hex[:8]}"

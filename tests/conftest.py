@@ -2,8 +2,8 @@
 
 import asyncio
 import os
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
@@ -17,8 +17,8 @@ from mcp_kg_skills.utils.env_file import EnvFileManager
 
 # Try to import Neo4j, but make it optional
 try:
-    from neo4j import AsyncGraphDatabase
     from mcp_kg_skills.database.neo4j import Neo4jDatabase
+
     HAS_NEO4J = True
 except ImportError:
     HAS_NEO4J = False
@@ -98,7 +98,7 @@ async def clean_db(db: DatabaseInterface) -> AsyncGenerator[DatabaseInterface, N
     if isinstance(db, SQLiteDatabase):
         # SQLite in-memory is already clean, just initialize schema
         pass
-    elif HAS_NEO4J and hasattr(db, 'driver'):
+    elif HAS_NEO4J and hasattr(db, "driver"):
         # Neo4j cleanup
         async with db.driver.session(database=db.database) as session:
             await session.run("MATCH (n) DETACH DELETE n")
@@ -106,7 +106,7 @@ async def clean_db(db: DatabaseInterface) -> AsyncGenerator[DatabaseInterface, N
     yield db
 
     # Clean after test
-    if HAS_NEO4J and hasattr(db, 'driver'):
+    if HAS_NEO4J and hasattr(db, "driver"):
         async with db.driver.session(database=db.database) as session:
             await session.run("MATCH (n) DETACH DELETE n")
 

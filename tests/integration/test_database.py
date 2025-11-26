@@ -69,9 +69,7 @@ class TestDatabaseBasicOperations:
         created = await clean_db.create_node("SKILL", sample_skill_data)
         node_id = created["id"]
 
-        updated = await clean_db.update_node(
-            node_id, {"description": "Updated description"}
-        )
+        updated = await clean_db.update_node(node_id, {"description": "Updated description"})
 
         assert updated["description"] == "Updated description"
         assert updated["name"] == sample_skill_data["name"]
@@ -172,9 +170,7 @@ class TestRelationships:
         skill = await clean_db.create_node("SKILL", sample_skill_data)
         script = await clean_db.create_node("SCRIPT", sample_script_data)
 
-        rel = await clean_db.create_relationship(
-            "CONTAINS", skill["id"], script["id"]
-        )
+        rel = await clean_db.create_relationship("CONTAINS", skill["id"], script["id"])
 
         assert rel["type"] == "CONTAINS"
         assert rel["source_id"] == skill["id"]
@@ -187,9 +183,7 @@ class TestRelationships:
         script = await clean_db.create_node("SCRIPT", sample_script_data)
 
         with pytest.raises(NodeNotFoundError):
-            await clean_db.create_relationship(
-                "CONTAINS", "nonexistent-id", script["id"]
-            )
+            await clean_db.create_relationship("CONTAINS", "nonexistent-id", script["id"])
 
     async def test_create_relationship_nonexistent_target(
         self, clean_db: DatabaseInterface, sample_skill_data
@@ -198,24 +192,16 @@ class TestRelationships:
         skill = await clean_db.create_node("SKILL", sample_skill_data)
 
         with pytest.raises(NodeNotFoundError):
-            await clean_db.create_relationship(
-                "CONTAINS", skill["id"], "nonexistent-id"
-            )
+            await clean_db.create_relationship("CONTAINS", skill["id"], "nonexistent-id")
 
     async def test_circular_dependency_detection(
         self, clean_db: DatabaseInterface, sample_skill_data
     ):
         """Test circular dependency detection for CONTAINS relationships."""
         # Create chain: skill1 -> skill2 -> skill3
-        skill1 = await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "skill1"}
-        )
-        skill2 = await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "skill2"}
-        )
-        skill3 = await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "skill3"}
-        )
+        skill1 = await clean_db.create_node("SKILL", {**sample_skill_data, "name": "skill1"})
+        skill2 = await clean_db.create_node("SKILL", {**sample_skill_data, "name": "skill2"})
+        skill3 = await clean_db.create_node("SKILL", {**sample_skill_data, "name": "skill3"})
 
         await clean_db.create_relationship("CONTAINS", skill1["id"], skill2["id"])
         await clean_db.create_relationship("CONTAINS", skill2["id"], skill3["id"])
@@ -224,24 +210,14 @@ class TestRelationships:
         with pytest.raises(CircularDependencyError):
             await clean_db.create_relationship("CONTAINS", skill3["id"], skill1["id"])
 
-    async def test_relate_to_allows_cycles(
-        self, clean_db: DatabaseInterface, sample_skill_data
-    ):
+    async def test_relate_to_allows_cycles(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test that RELATE_TO relationships can form cycles."""
-        skill1 = await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "skill1"}
-        )
-        skill2 = await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "skill2"}
-        )
+        skill1 = await clean_db.create_node("SKILL", {**sample_skill_data, "name": "skill1"})
+        skill2 = await clean_db.create_node("SKILL", {**sample_skill_data, "name": "skill2"})
 
         # Create bidirectional RELATE_TO (this should work)
-        rel1 = await clean_db.create_relationship(
-            "RELATE_TO", skill1["id"], skill2["id"]
-        )
-        rel2 = await clean_db.create_relationship(
-            "RELATE_TO", skill2["id"], skill1["id"]
-        )
+        rel1 = await clean_db.create_relationship("RELATE_TO", skill1["id"], skill2["id"])
+        rel2 = await clean_db.create_relationship("RELATE_TO", skill2["id"], skill1["id"])
 
         assert rel1 is not None
         assert rel2 is not None
@@ -251,12 +227,8 @@ class TestRelationships:
     ):
         """Test listing relationships."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
-        script1 = await clean_db.create_node(
-            "SCRIPT", {**sample_script_data, "name": "script1"}
-        )
-        script2 = await clean_db.create_node(
-            "SCRIPT", {**sample_script_data, "name": "script2"}
-        )
+        script1 = await clean_db.create_node("SCRIPT", {**sample_script_data, "name": "script1"})
+        script2 = await clean_db.create_node("SCRIPT", {**sample_script_data, "name": "script2"})
 
         await clean_db.create_relationship("CONTAINS", skill["id"], script1["id"])
         await clean_db.create_relationship("CONTAINS", skill["id"], script2["id"])
@@ -274,9 +246,7 @@ class TestRelationships:
         skill = await clean_db.create_node("SKILL", sample_skill_data)
         script = await clean_db.create_node("SCRIPT", sample_script_data)
 
-        rel = await clean_db.create_relationship(
-            "CONTAINS", skill["id"], script["id"]
-        )
+        rel = await clean_db.create_relationship("CONTAINS", skill["id"], script["id"])
 
         deleted = await clean_db.delete_relationship(rel["id"])
         assert deleted is True
@@ -294,9 +264,7 @@ class TestRelationships:
 
         await clean_db.create_relationship("CONTAINS", skill["id"], script["id"])
 
-        count = await clean_db.delete_relationships(
-            source_id=skill["id"], target_id=script["id"]
-        )
+        count = await clean_db.delete_relationships(source_id=skill["id"], target_id=script["id"])
 
         assert count == 1
 
@@ -305,12 +273,8 @@ class TestRelationships:
     ):
         """Test getting nodes connected via relationships."""
         skill = await clean_db.create_node("SKILL", sample_skill_data)
-        script1 = await clean_db.create_node(
-            "SCRIPT", {**sample_script_data, "name": "script1"}
-        )
-        script2 = await clean_db.create_node(
-            "SCRIPT", {**sample_script_data, "name": "script2"}
-        )
+        script1 = await clean_db.create_node("SCRIPT", {**sample_script_data, "name": "script1"})
+        script2 = await clean_db.create_node("SCRIPT", {**sample_script_data, "name": "script2"})
 
         await clean_db.create_relationship("CONTAINS", skill["id"], script1["id"])
         await clean_db.create_relationship("CONTAINS", skill["id"], script2["id"])
@@ -329,14 +293,10 @@ class TestQueryExecution:
     """Test Cypher query execution."""
 
     @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
-    async def test_execute_simple_query(
-        self, clean_db: DatabaseInterface, sample_skill_data
-    ):
+    async def test_execute_simple_query(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test executing a simple read-only query."""
         await clean_db.create_node("SKILL", sample_skill_data)
-        await clean_db.create_node(
-            "SKILL", {**sample_skill_data, "name": "another-skill"}
-        )
+        await clean_db.create_node("SKILL", {**sample_skill_data, "name": "another-skill"})
 
         results = await clean_db.execute_query(
             "MATCH (s:SKILL) RETURN s.name as name ORDER BY s.name"
@@ -362,25 +322,18 @@ class TestQueryExecution:
         assert results[0]["desc"] == sample_skill_data["description"]
 
     @pytest.mark.skipif(not IS_NEO4J, reason="Cypher queries only supported on Neo4j")
-    async def test_execute_query_limit(
-        self, clean_db: DatabaseInterface, sample_skill_data
-    ):
+    async def test_execute_query_limit(self, clean_db: DatabaseInterface, sample_skill_data):
         """Test query result limiting."""
         # Create 5 nodes
         for i in range(5):
-            await clean_db.create_node(
-                "SKILL", {**sample_skill_data, "name": f"skill-{i}"}
-            )
+            await clean_db.create_node("SKILL", {**sample_skill_data, "name": f"skill-{i}"})
 
-        results = await clean_db.execute_query(
-            "MATCH (s:SKILL) RETURN s.name", limit=3
-        )
+        results = await clean_db.execute_query("MATCH (s:SKILL) RETURN s.name", limit=3)
 
         assert len(results) == 3
 
     async def test_readonly_query_validation(self, clean_db: DatabaseInterface):
         """Test that write queries are rejected."""
-        from mcp_kg_skills.exceptions import InvalidQueryError
 
         with pytest.raises(InvalidQueryError):
             await clean_db.execute_query("CREATE (n:TEST) RETURN n")
@@ -402,6 +355,7 @@ class TestDatabaseSchemaInitialization:
         # Schema is initialized in fixture, verify it worked
         # This test only runs on Neo4j
         from mcp_kg_skills.database.neo4j import Neo4jDatabase
+
         if isinstance(clean_db, Neo4jDatabase):
             async with clean_db.driver.session(database=clean_db.database) as session:
                 result = await session.run("SHOW CONSTRAINTS")

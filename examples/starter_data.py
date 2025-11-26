@@ -5,7 +5,6 @@ knowledge graph with skills, scripts, knowledge, and environments.
 """
 
 import asyncio
-import os
 
 from mcp_kg_skills.config import load_config
 from mcp_kg_skills.database.neo4j import Neo4jDatabase
@@ -422,7 +421,7 @@ def api_get(endpoint: str, params: dict = None) -> dict:
         target_id=best_practices["node"]["id"],
     )
 
-    print(f"✅ Created Knowledge Documentation")
+    print("✅ Created Knowledge Documentation")
 
     # ==========================================================================
     # Create Cross-Skill Relationships
@@ -446,30 +445,30 @@ def api_get(endpoint: str, params: dict = None) -> dict:
     print("\n" + "=" * 60)
     print("✨ Example data loaded successfully!")
     print("=" * 60)
-    print(f"\n📊 Summary:")
-    print(f"  - Skills: 3")
-    print(f"  - Scripts: 5")
-    print(f"  - Environments: 2")
-    print(f"  - Knowledge: 1")
+    print("\n📊 Summary:")
+    print("  - Skills: 3")
+    print("  - Scripts: 5")
+    print("  - Environments: 2")
+    print("  - Knowledge: 1")
 
-    print(f"\n💡 Try these queries:")
-    print(f"\n  # List all skills")
-    print(f"  MATCH (s:SKILL) RETURN s.name, s.description")
-    print(f"\n  # Find scripts in web-scraper skill")
-    print(f"  MATCH (s:SKILL {{name: 'web-scraper'}})-[:CONTAINS]->(script:SCRIPT)")
-    print(f"  RETURN script.name, script.description")
-    print(f"\n  # Execute web scraping")
-    print(f"  execute(")
-    print(f"    imports=['fetch_html', 'parse_links'],")
-    print(f"    code='''")
-    print(f"html = fetch_html('https://example.com')")
-    print(f"links = parse_links(html)")
-    print(f"print(f'Found {{len(links)}} links')")
-    print(f"'''")
-    print(f"  )")
+    print("\n💡 Try these queries:")
+    print("\n  # List all skills")
+    print("  MATCH (s:SKILL) RETURN s.name, s.description")
+    print("\n  # Find scripts in web-scraper skill")
+    print("  MATCH (s:SKILL {name: 'web-scraper'})-[:CONTAINS]->(script:SCRIPT)")
+    print("  RETURN script.name, script.description")
+    print("\n  # Execute web scraping")
+    print("  execute(")
+    print("    imports=['fetch_html', 'parse_links'],")
+    print("    code='''")
+    print("html = fetch_html('https://example.com')")
+    print("links = parse_links(html)")
+    print("print(f'Found {len(links)} links')")
+    print("'''")
+    print("  )")
 
     await db.disconnect()
-    print(f"\n🎉 Done!")
+    print("\n🎉 Done!")
 
 
 if __name__ == "__main__":

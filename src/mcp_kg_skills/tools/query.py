@@ -144,11 +144,9 @@ class QueryTool:
                     # Check if this looks like an ENV node
                     if "variables" in value and "secret_keys" in value:
                         sanitized_value = dict(value)
-                        sanitized_value["variables"] = (
-                            self.secret_detector.sanitize_env_response(
-                                value.get("variables", {}),
-                                value.get("secret_keys", []),
-                            )
+                        sanitized_value["variables"] = self.secret_detector.sanitize_env_response(
+                            value.get("variables", {}),
+                            value.get("secret_keys", []),
                         )
                         sanitized_result[key] = sanitized_value
                     else:

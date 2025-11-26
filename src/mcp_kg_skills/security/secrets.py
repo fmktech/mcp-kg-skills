@@ -151,9 +151,7 @@ class SecretDetector:
                 sanitized = sanitized.replace(secret, "<REDACTED>")
         return sanitized
 
-    def sanitize_dict(
-        self, data: dict[str, Any], secrets: list[str]
-    ) -> dict[str, Any]:
+    def sanitize_dict(self, data: dict[str, Any], secrets: list[str]) -> dict[str, Any]:
         """Recursively sanitize dictionaries containing potential secrets.
 
         Args:
@@ -230,7 +228,7 @@ class SecretDetector:
             all_variables.update(variables)
 
             # Collect secret keys (actual values would come from .env files)
-            secret_keys = env_dict.get("secret_keys", [])
+            env_dict.get("secret_keys", [])
 
             # In practice, secret values would be loaded from .env files
             # For now, we just track that these keys exist
@@ -261,8 +259,6 @@ def sanitize_output(text: str, secrets: list[str]) -> str:
     return get_default_detector().sanitize_output(text, secrets)
 
 
-def extract_secrets(
-    variables: dict[str, str]
-) -> tuple[dict[str, str], list[str], dict[str, str]]:
+def extract_secrets(variables: dict[str, str]) -> tuple[dict[str, str], list[str], dict[str, str]]:
     """Extract secrets from variables (convenience function)."""
     return get_default_detector().extract_secrets(variables)

@@ -67,8 +67,7 @@ class EnvTool:
         valid_operations = ["create", "read", "update", "delete", "list_keys"]
         if operation not in valid_operations:
             raise ValidationError(
-                f"Invalid operation '{operation}'. "
-                f"Must be one of: {', '.join(valid_operations)}"
+                f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
             )
 
         # Route to appropriate handler
@@ -159,9 +158,7 @@ class EnvTool:
             node_id=env_id,
         )
 
-    async def _list_keys(
-        self, env_id: str, keys: list[str] | None
-    ) -> dict[str, Any]:
+    async def _list_keys(self, env_id: str, keys: list[str] | None) -> dict[str, Any]:
         """List environment variable keys (names only, no values).
 
         Args:
@@ -190,10 +187,12 @@ class EnvTool:
         key_info = []
         for key in all_keys:
             is_secret = key in secret_keys
-            key_info.append({
-                "key": key,
-                "is_secret": is_secret,
-            })
+            key_info.append(
+                {
+                    "key": key,
+                    "is_secret": is_secret,
+                }
+            )
 
         logger.debug(f"Listed {len(key_info)} keys from ENV {env_id}")
 

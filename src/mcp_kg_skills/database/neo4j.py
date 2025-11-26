@@ -2,10 +2,10 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession
+from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (
     ConstraintError,
     Neo4jError,
@@ -19,7 +19,6 @@ from ..exceptions import (
     InvalidQueryError,
     NodeAlreadyExistsError,
     NodeNotFoundError,
-    RelationshipNotFoundError,
 )
 from .abstract import DatabaseInterface
 
@@ -207,7 +206,7 @@ class Neo4jDatabase(DatabaseInterface):
             raise DatabaseConnectionError("Not connected to database")
 
         # Ensure timestamps are set
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
 
@@ -232,7 +231,7 @@ class Neo4jDatabase(DatabaseInterface):
                 logger.info(f"Created {node_type} node: {node.get('id')}")
                 return node
 
-            except ConstraintError as e:
+            except ConstraintError:
                 # Unique constraint violation
                 name = data.get("name", "unknown")
                 raise NodeAlreadyExistsError(name, node_type)
@@ -281,7 +280,7 @@ class Neo4jDatabase(DatabaseInterface):
             raise DatabaseConnectionError("Not connected to database")
 
         # Update timestamp
-        data["updated_at"] = datetime.now(timezone.utc)
+        data["updated_at"] = datetime.now(UTC)
 
         # Serialize nested structures for Neo4j storage
         serialized_data = _serialize_for_neo4j(data)
@@ -306,7 +305,7 @@ class Neo4jDatabase(DatabaseInterface):
                 logger.info(f"Updated node: {node_id}")
                 return node
 
-            except ConstraintError as e:
+            except ConstraintError:
                 name = data.get("name", "unknown")
                 raise NodeAlreadyExistsError(name, "node")
             except Neo4jError as e:
@@ -397,7 +396,7 @@ class Neo4jDatabase(DatabaseInterface):
                 raise CircularDependencyError(source_id, target_id)
 
         properties = properties or {}
-        properties.setdefault("created_at", datetime.now(timezone.utc))
+        properties.setdefault("created_at", datetime.now(UTC))
 
         async with self.driver.session(database=self.database) as session:
             result = await session.run(

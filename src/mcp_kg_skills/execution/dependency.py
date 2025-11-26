@@ -1,7 +1,6 @@
 """PEP 723 inline script metadata parser."""
 
 import logging
-import re
 import tomllib
 from typing import Any
 
@@ -215,7 +214,7 @@ class PEP723Parser:
             deps = PEP723Parser.extract_dependencies(script_body)
             all_deps.update(deps)
 
-        return sorted(list(all_deps))
+        return sorted(all_deps)
 
     @staticmethod
     def generate_metadata_block(
@@ -303,7 +302,6 @@ class PEP723Parser:
         lines = script_body.split("\n")
         result_lines = []
         in_block = False
-        block_ended = False
 
         for line in lines:
             stripped = line.strip()
@@ -314,7 +312,6 @@ class PEP723Parser:
 
             if in_block and stripped == "# ///":
                 in_block = False
-                block_ended = True
                 continue
 
             if not in_block:

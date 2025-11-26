@@ -8,7 +8,6 @@ from mcp_kg_skills.database.abstract import DatabaseInterface
 from mcp_kg_skills.execution.runner import ScriptRunner
 from mcp_kg_skills.security.secrets import SecretDetector
 from mcp_kg_skills.tools.env import EnvTool
-from mcp_kg_skills.tools.execute import ExecuteTool
 from mcp_kg_skills.tools.nodes import NodesTool
 from mcp_kg_skills.tools.relationships import RelationshipsTool
 from mcp_kg_skills.utils.env_file import EnvFileManager
@@ -225,7 +224,7 @@ def func_b() -> str:
 
         # Execute will merge dependencies
         result = await script_runner.execute(
-            code='print(func_a() + func_b())',
+            code="print(func_a() + func_b())",
             imports=["script_a", "script_b"],
             timeout=60,  # Longer timeout for dependency installation
         )
@@ -408,7 +407,7 @@ if __name__ == '__main__':
 
         # Execute code using the script - __main__ block should be stripped
         result = await script_runner.execute(
-            code='print(get_value())',
+            code="print(get_value())",
             imports=["script_with_main"],
             timeout=30,
         )
@@ -451,9 +450,7 @@ def raise_error():
         assert result["return_code"] != 0
         assert "ValueError" in result["stderr"] or "ValueError" in result["stdout"]
 
-    async def test_timeout_handling(
-        self, clean_db: DatabaseInterface, script_runner: ScriptRunner
-    ):
+    async def test_timeout_handling(self, clean_db: DatabaseInterface, script_runner: ScriptRunner):
         """Test that script execution respects timeout."""
         script_data = {
             "name": "slow_script",

@@ -1,7 +1,5 @@
 """Unit tests for script cleaner utility."""
 
-import pytest
-
 from mcp_kg_skills.utils.script_cleaner import ScriptCleaner
 
 
@@ -60,11 +58,11 @@ if __name__ == '__main__':
         result = ScriptCleaner.remove_main_block(script)
 
         assert "if __name__" not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
         assert 'print("Hello")' in result
         # Main block call removed, but function def preserved
-        lines = [l.strip() for l in result.split('\n')]
-        assert 'hello()' not in lines  # Standalone call removed
+        lines = [line.strip() for line in result.split("\n")]
+        assert "hello()" not in lines  # Standalone call removed
 
     def test_removes_double_quoted_main_block(self):
         """Test removal of __main__ with double quotes."""
@@ -77,7 +75,7 @@ if __name__ == "__main__":
         result = ScriptCleaner.remove_main_block(script)
 
         assert "if __name__" not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
 
     def test_removes_reversed_comparison(self):
         """Test removal of reversed comparison: '__main__' == __name__."""
@@ -90,20 +88,20 @@ if '__main__' == __name__:
         result = ScriptCleaner.remove_main_block(script)
 
         assert "if '__main__'" not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
 
     def test_removes_reversed_double_quoted_comparison(self):
         """Test removal of reversed comparison with double quotes."""
-        script = '''def hello():
+        script = """def hello():
     print("Hello")
 
 if "__main__" == __name__:
     hello()
-'''
+"""
         result = ScriptCleaner.remove_main_block(script)
 
         assert 'if "__main__"' not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
 
     def test_preserves_script_without_main_block(self):
         """Test that scripts without __main__ are unchanged."""
@@ -135,8 +133,8 @@ if __name__ == '__main__':
 
         assert "if __name__" not in result
         assert "sys.exit(0)" not in result
-        assert 'def hello():' in result
-        assert 'def setup():' in result
+        assert "def hello():" in result
+        assert "def setup():" in result
 
     def test_removes_main_block_with_complex_logic(self):
         """Test removal of __main__ block with complex logic."""
@@ -172,7 +170,7 @@ if __name__ == '__main__':
 """
         result = ScriptCleaner.remove_main_block(script)
 
-        assert 'if True:' in result
+        assert "if True:" in result
         assert "if __name__" not in result
 
     def test_handles_main_block_at_end_of_file_no_newline(self):
@@ -185,7 +183,7 @@ if __name__ == '__main__':
         result = ScriptCleaner.remove_main_block(script)
 
         assert "if __name__" not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
 
     def test_handles_nested_if_in_main_block(self):
         """Test removal of __main__ block containing nested if."""
@@ -222,7 +220,7 @@ if __name__ == '__main__':
         result = ScriptCleaner._remove_main_block_regex(script)
 
         assert "if __name__" not in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
 
     def test_regex_handles_double_quotes(self):
         """Test regex handles double quotes."""
@@ -244,6 +242,7 @@ class TestIsMainBlock:
     def test_detects_standard_main_block(self):
         """Test detection of standard __main__ check."""
         import ast
+
         code = "if __name__ == '__main__': pass"
         tree = ast.parse(code)
         node = tree.body[0]
@@ -253,6 +252,7 @@ class TestIsMainBlock:
     def test_detects_double_quoted_main_block(self):
         """Test detection with double quotes."""
         import ast
+
         code = 'if __name__ == "__main__": pass'
         tree = ast.parse(code)
         node = tree.body[0]
@@ -262,6 +262,7 @@ class TestIsMainBlock:
     def test_detects_reversed_comparison(self):
         """Test detection of reversed comparison."""
         import ast
+
         code = "if '__main__' == __name__: pass"
         tree = ast.parse(code)
         node = tree.body[0]
@@ -271,6 +272,7 @@ class TestIsMainBlock:
     def test_rejects_non_if_node(self):
         """Test that non-If nodes are rejected."""
         import ast
+
         code = "x = 1"
         tree = ast.parse(code)
         node = tree.body[0]
@@ -280,6 +282,7 @@ class TestIsMainBlock:
     def test_rejects_different_variable(self):
         """Test that different variable names are rejected."""
         import ast
+
         code = "if __file__ == '__main__': pass"
         tree = ast.parse(code)
         node = tree.body[0]
@@ -289,6 +292,7 @@ class TestIsMainBlock:
     def test_rejects_different_value(self):
         """Test that different values are rejected."""
         import ast
+
         code = "if __name__ == '__test__': pass"
         tree = ast.parse(code)
         node = tree.body[0]
@@ -298,6 +302,7 @@ class TestIsMainBlock:
     def test_rejects_not_equals(self):
         """Test that != comparison is rejected."""
         import ast
+
         code = "if __name__ != '__main__': pass"
         tree = ast.parse(code)
         node = tree.body[0]

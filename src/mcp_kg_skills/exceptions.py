@@ -44,7 +44,9 @@ class CircularDependencyError(MCPKGSkillsError):
 class RelationshipNotFoundError(MCPKGSkillsError):
     """Raised when a requested relationship does not exist."""
 
-    def __init__(self, rel_id: str | None = None, source_id: str | None = None, target_id: str | None = None):
+    def __init__(
+        self, rel_id: str | None = None, source_id: str | None = None, target_id: str | None = None
+    ):
         self.rel_id = rel_id
         self.source_id = source_id
         self.target_id = target_id

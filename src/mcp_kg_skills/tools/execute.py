@@ -56,9 +56,7 @@ class ExecuteTool:
             raise ValidationError("imports must be a list of script names")
 
         try:
-            logger.info(
-                f"Executing code with {len(imports)} imports (timeout: {timeout}s)"
-            )
+            logger.info(f"Executing code with {len(imports)} imports (timeout: {timeout}s)")
 
             # Execute with runner
             result = await self.runner.execute(
@@ -73,13 +71,9 @@ class ExecuteTool:
 
             # Log result
             if result["success"]:
-                logger.info(
-                    f"Execution completed successfully in {result['execution_time']:.2f}s"
-                )
+                logger.info(f"Execution completed successfully in {result['execution_time']:.2f}s")
             else:
-                logger.warning(
-                    f"Execution failed with return code {result['return_code']}"
-                )
+                logger.warning(f"Execution failed with return code {result['return_code']}")
 
             return result
 

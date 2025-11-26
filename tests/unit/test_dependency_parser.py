@@ -165,7 +165,7 @@ import requests
 
         assert "# /// script" in result
         assert "# ///" in result
-        assert 'def hello():' in result
+        assert "def hello():" in result
         # Original script should be after metadata
         assert result.index("# ///") < result.index("def hello()")
 
@@ -183,7 +183,7 @@ def hello():
             dependencies=["new"],
         )
 
-        assert "#   \"new\"," in result
+        assert '#   "new",' in result
         assert "old" not in result
 
     def test_remove_metadata_block(self):
@@ -302,7 +302,4 @@ def process_data(data: list) -> pd.DataFrame:
         deps = PEP723Parser.extract_dependencies(script)
 
         assert len(deps) == 3
-        assert all(
-            dep in deps
-            for dep in ["pandas>=2.0.0", "numpy>=1.24.0", "matplotlib>=3.7.0"]
-        )
+        assert all(dep in deps for dep in ["pandas>=2.0.0", "numpy>=1.24.0", "matplotlib>=3.7.0"])

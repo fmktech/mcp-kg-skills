@@ -37,7 +37,15 @@ _query_tool: QueryTool | None = None
 
 async def _ensure_initialized() -> None:
     """Lazy initialization of server components."""
-    global _initialized, _config, _db, _nodes_tool, _relationships_tool, _env_tool, _execute_tool, _query_tool
+    global \
+        _initialized, \
+        _config, \
+        _db, \
+        _nodes_tool, \
+        _relationships_tool, \
+        _env_tool, \
+        _execute_tool, \
+        _query_tool
 
     if _initialized:
         return
@@ -106,72 +114,72 @@ async def nodes(
 ) -> dict[str, Any]:
     """Manage graph nodes (SKILL, KNOWLEDGE, SCRIPT, ENV).
 
-    Supports create, read, update, delete, and list operations.
+        Supports create, read, update, delete, and list operations.
 
-    Args:
-        operation: Operation to perform (create, read, update, delete, list)
-        node_type: Type of node (SKILL, KNOWLEDGE, SCRIPT, ENV)
-        node_id: Node ID (for read, update, delete)
-        data: Node data (for create, update) - can be dict or JSON string
-        filters: Filter criteria (for list) - can be dict or JSON string
+        Args:
+            operation: Operation to perform (create, read, update, delete, list)
+            node_type: Type of node (SKILL, KNOWLEDGE, SCRIPT, ENV)
+            node_id: Node ID (for read, update, delete)
+            data: Node data (for create, update) - can be dict or JSON string
+            filters: Filter criteria (for list) - can be dict or JSON string
 
-    Returns:
-        Operation result
+        Returns:
+            Operation result
 
-    SCRIPT Node Best Practices:
-        - Do NOT include `if __name__ == '__main__':` blocks - they are
-          automatically stripped during execution to prevent unintended side effects
-        - Export functions/classes that should be callable from user code
-        - Keep example/test code in separate functions, not in __main__ blocks
-        - Use PEP 723 metadata for dependencies
+        SCRIPT Node Best Practices:
+            - Do NOT include `if __name__ == '__main__':` blocks - they are
+              automatically stripped during execution to prevent unintended side effects
+            - Export functions/classes that should be callable from user code
+            - Keep example/test code in separate functions, not in __main__ blocks
+            - Use PEP 723 metadata for dependencies
 
-    Examples:
-        Create a SKILL node:
-        ```
-        nodes(
-            operation="create",
-            node_type="SKILL",
-            data={
-                "name": "data-pipeline",
-                "description": "ETL pipeline for data processing",
-                "body": "# Data Pipeline\\n\\nThis skill..."
-            }
-        )
-        ```
+        Examples:
+            Create a SKILL node:
+            ```
+            nodes(
+                operation="create",
+                node_type="SKILL",
+                data={
+                    "name": "data-pipeline",
+                    "description": "ETL pipeline for data processing",
+                    "body": "# Data Pipeline\\n\\nThis skill..."
+                }
+            )
+            ```
 
-        Create a SCRIPT node (note: no __main__ block):
-        ```
-        nodes(
-            operation="create",
-            node_type="SCRIPT",
-            data={
-                "name": "fetch_data",
-                "description": "Fetch data from API",
-                "function_signature": "fetch_data(url: str) -> dict",
-                "body": '''# /// script
-# requires-python = ">=3.12"
-# dependencies = ["requests>=2.31.0"]
-# ///
+            Create a SCRIPT node (note: no __main__ block):
+            ```
+            nodes(
+                operation="create",
+                node_type="SCRIPT",
+                data={
+                    "name": "fetch_data",
+                    "description": "Fetch data from API",
+                    "function_signature": "fetch_data(url: str) -> dict",
+                    "body": '''# /// script
+    # requires-python = ">=3.12"
+    # dependencies = ["requests>=2.31.0"]
+    # ///
 
-import requests
+    import requests
 
-def fetch_data(url: str) -> dict:
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-'''
-            }
-        )
-        ```
+    def fetch_data(url: str) -> dict:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    '''
+                }
+            )
+            ```
 
-        List SCRIPT nodes:
-        ```
-        nodes(
-            operation="list",
-            node_type="SCRIPT",
-            filters={"name": "fetch"}
-        )
-        ```
+            List SCRIPT nodes:
+            ```
+            nodes(
+                operation="list",
+                node_type="SCRIPT",
+                filters={"name": "fetch"}
+            )
+            ```
     """
     await _ensure_initialized()
 
@@ -473,9 +481,7 @@ async def execute(
         return await _execute_tool.handle(
             code=code,
             imports=parsed_imports,
-            timeout=min(timeout, _config.execution.max_timeout)
-            if _config
-            else timeout,
+            timeout=min(timeout, _config.execution.max_timeout) if _config else timeout,
         )
     except MCPKGSkillsError:
         raise

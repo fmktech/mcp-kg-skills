@@ -46,9 +46,7 @@ class ScriptCleaner:
         try:
             return ScriptCleaner._remove_main_block_ast(script_body, script_name)
         except SyntaxError as e:
-            logger.warning(
-                f"AST parsing failed for '{script_name}': {e}. Using regex fallback."
-            )
+            logger.warning(f"AST parsing failed for '{script_name}': {e}. Using regex fallback.")
             return ScriptCleaner._remove_main_block_regex(script_body)
 
     @staticmethod
@@ -79,9 +77,7 @@ class ScriptCleaner:
             return script_body
 
         lines = script_body.split("\n")
-        result_lines = [
-            line for i, line in enumerate(lines, start=1) if i not in lines_to_remove
-        ]
+        result_lines = [line for i, line in enumerate(lines, start=1) if i not in lines_to_remove]
 
         # Clean trailing whitespace
         while result_lines and not result_lines[-1].strip():

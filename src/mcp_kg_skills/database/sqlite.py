@@ -162,6 +162,7 @@ class SQLiteDatabase(DatabaseInterface):
         if not node_id:
             # Generate UUID if not provided
             import uuid
+
             node_id = str(uuid.uuid4())
             data["id"] = node_id
 

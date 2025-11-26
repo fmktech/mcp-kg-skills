@@ -74,8 +74,7 @@ class NodesTool:
         valid_operations = ["create", "read", "update", "delete", "list"]
         if operation not in valid_operations:
             raise ValidationError(
-                f"Invalid operation '{operation}'. "
-                f"Must be one of: {', '.join(valid_operations)}"
+                f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
             )
 
         # Validate node type
@@ -239,8 +238,8 @@ class NodesTool:
             all_variables = data["variables"]
 
             # Separate public variables and secrets
-            public_vars, secret_keys, secret_values = (
-                self.secret_detector.extract_secrets(all_variables)
+            public_vars, secret_keys, secret_values = self.secret_detector.extract_secrets(
+                all_variables
             )
 
             # Update node data
@@ -300,9 +299,7 @@ class NodesTool:
                 "already_deleted": True,
             }
 
-    async def _list(
-        self, node_type: NodeType, filters: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _list(self, node_type: NodeType, filters: dict[str, Any]) -> dict[str, Any]:
         """List nodes with filtering."""
         try:
             # Validate filters

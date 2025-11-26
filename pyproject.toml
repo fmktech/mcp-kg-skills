@@ -69,6 +69,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "B904",  # raise from err (too verbose, exception already captured in message)
 ]
 
 [tool.ruff.lint.isort]

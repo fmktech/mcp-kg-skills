@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -28,9 +28,7 @@ class BaseNode(BaseModel):
     """Base model for all graph nodes."""
 
     id: str = Field(default_factory=lambda: str(uuid4()), description="Unique node identifier")
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="Last update timestamp"
     )
@@ -58,9 +56,7 @@ class KnowledgeNode(BaseNode):
     """KNOWLEDGE node - Documentation and context."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Knowledge item name")
-    description: str = Field(
-        ..., min_length=1, max_length=1000, description="Brief description"
-    )
+    description: str = Field(..., min_length=1, max_length=1000, description="Brief description")
     body: str = Field(..., description="Markdown content for the knowledge")
 
     @field_validator("name")
@@ -124,9 +120,7 @@ class Relationship(BaseModel):
     source_id: str = Field(..., description="Source node ID")
     target_id: str = Field(..., description="Target node ID")
     properties: dict[str, Any] = Field(default_factory=dict, description="Additional properties")
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
 
     model_config = {"from_attributes": True}
 
@@ -176,9 +170,7 @@ class QueryRequest(BaseModel):
     """Request to execute a Cypher query."""
 
     cypher: str = Field(..., min_length=1, description="Cypher query string")
-    parameters: dict[str, Any] = Field(
-        default_factory=dict, description="Query parameters"
-    )
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Query parameters")
     limit: int = Field(100, ge=1, le=1000, description="Maximum number of results")
 
 
