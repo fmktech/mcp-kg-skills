@@ -300,8 +300,14 @@ class SQLiteDatabase(DatabaseInterface):
         params: list[Any] = [node_type]
 
         if "name" in filters and filters["name"]:
-            query += " AND name LIKE ?"
-            params.append(f"%{filters['name']}%")
+            # Case-insensitive matching with normalized comparison
+            # Removes hyphens, underscores, spaces for fuzzy matching
+            # e.g., "sales-connect" matches "salesconnect", "Sales_Connect", etc.
+            normalized_search = (
+                filters["name"].lower().replace("-", "").replace("_", "").replace(" ", "")
+            )
+            query += " AND LOWER(REPLACE(REPLACE(REPLACE(name, '-', ''), '_', ''), ' ', '')) LIKE ?"
+            params.append(f"%{normalized_search}%")
 
         if "created_after" in filters and filters["created_after"]:
             query += " AND created_at >= ?"

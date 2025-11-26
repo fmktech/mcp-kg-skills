@@ -350,7 +350,13 @@ class Neo4jDatabase(DatabaseInterface):
 
         # Build WHERE clauses
         if "name" in filters and filters["name"]:
-            where_clauses.append("n.name CONTAINS $name")
+            # Case-insensitive matching with normalized comparison
+            # Removes hyphens, underscores, spaces for fuzzy matching
+            # e.g., "sales-connect" matches "salesconnect", "Sales_Connect", etc.
+            where_clauses.append(
+                "toLower(replace(replace(replace(n.name, '-', ''), '_', ''), ' ', '')) "
+                "CONTAINS toLower(replace(replace(replace($name, '-', ''), '_', ''), ' ', ''))"
+            )
             params["name"] = filters["name"]
 
         if "created_after" in filters and filters["created_after"]:
