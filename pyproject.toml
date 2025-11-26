@@ -1,6 +1,6 @@
 [project]
 name = "mcp-kg-skills"
-version = "0.1.2"
+version = "0.1.3"
 description = "A Model Context Protocol server for managing a graph of reusable Python functions, documentation, and environment variables"
 authors = [
     {name = "MCP KG Skills Team"}
